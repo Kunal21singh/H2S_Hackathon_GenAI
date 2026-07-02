@@ -11,10 +11,10 @@ def build_hotspots(complaints: list[Complaint]) -> list[Hotspot]:
     for complaint in complaints:
         if complaint.duplicate_of:
             continue
-        buckets[(complaint.ward or "Unassigned", complaint.classification.category.value)].append(complaint)
+        buckets[(complaint.place or "Unassigned", complaint.classification.category.value)].append(complaint)
 
     hotspots: list[Hotspot] = []
-    for (ward, _category), items in buckets.items():
+    for (place, _category), items in buckets.items():
         if not items:
             continue
         lat_values = [item.lat for item in items if item.lat is not None]
@@ -22,7 +22,7 @@ def build_hotspots(complaints: list[Complaint]) -> list[Hotspot]:
         priority = max(items, key=lambda item: PRIORITY_SCORE.get(item.classification.priority, 0)).classification.priority
         hotspots.append(
             Hotspot(
-                ward=ward,
+                place=place,
                 category=items[0].classification.category,
                 count=len(items),
                 centroid_lat=sum(lat_values) / len(lat_values) if lat_values else None,

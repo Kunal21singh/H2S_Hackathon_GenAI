@@ -38,7 +38,8 @@ class Complaint(BaseModel):
     voice_transcript: str | None = None
     photo_filename: str | None = None
     photo_content_type: str | None = None
-    ward: str = "Unassigned"
+    place: str = "Unassigned"
+    state: str | None = None
     lat: float | None = None
     lng: float | None = None
     reporter_name: str | None = None
@@ -55,7 +56,8 @@ class Complaint(BaseModel):
 class ComplaintCreate(BaseModel):
     text: str
     voice_transcript: str | None = None
-    ward: str = "Unassigned"
+    place: str = "Unassigned"
+    state: str | None = None
     lat: float | None = None
     lng: float | None = None
     reporter_name: str | None = None
@@ -94,7 +96,7 @@ class AuthSession(BaseModel):
 
 
 class Hotspot(BaseModel):
-    ward: str
+    place: str
     category: ComplaintCategory
     count: int
     centroid_lat: float | None = None

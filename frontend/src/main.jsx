@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   BarChart3,
   CheckCircle2,
+  Compass,
   LogOut,
   MapPin,
   MessageSquare,
@@ -19,6 +20,120 @@ import './styles.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 const AUTH_STORAGE_KEY = 'civicpulse-session';
+function HotspotMap({ hotspots }) {
+  const mapRef = React.useRef(null);
+  const mapInstanceRef = React.useRef(null);
+  const markersRef = React.useRef([]);
+
+  React.useEffect(() => {
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+
+    if (!window.L) {
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.async = true;
+      script.onload = initMap;
+      document.body.appendChild(script);
+    } else {
+      initMap();
+    }
+
+    function initMap() {
+      if (!mapRef.current) return;
+      if (mapInstanceRef.current) return;
+
+      const validHotspot = hotspots.find(h => h.centroid_lat && h.centroid_lng);
+      const centerLat = validHotspot ? validHotspot.centroid_lat : 28.6139;
+      const centerLng = validHotspot ? validHotspot.centroid_lng : 77.2090;
+
+      const map = window.L.map(mapRef.current).setView([centerLat, centerLng], 12);
+      mapInstanceRef.current = map;
+
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
+
+      updateMarkers();
+    }
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (window.L && mapInstanceRef.current) {
+      updateMarkers();
+    }
+  }, [hotspots]);
+
+  function updateMarkers() {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
+
+    const PRIORITY_COLOR = {
+      low: '#2e7d32',
+      medium: '#fbc02d',
+      high: '#d32f2f',
+      critical: '#c2185b'
+    };
+
+    hotspots.forEach(hotspot => {
+      const { place, category, count, centroid_lat, centroid_lng, priority } = hotspot;
+      if (centroid_lat && centroid_lng) {
+        const color = PRIORITY_COLOR[priority] || '#fbc02d';
+        const marker = window.L.circleMarker([centroid_lat, centroid_lng], {
+          radius: Math.min(24, 7 + count * 2.5),
+          fillColor: color,
+          color: '#ffffff',
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.65
+        }).addTo(map);
+
+        marker.bindPopup(`
+          <div style="font-family: Inter, sans-serif; font-size: 13px; padding: 4px;">
+            <strong style="font-size: 14px; color: #1f3431;">${place}</strong><br/>
+            <span style="color: #697875; text-transform: capitalize;">Issue: ${category.replace('_', ' ')}</span><br/>
+            <span style="font-weight: 750; color: ${color}; font-size: 12.5px;">Count: ${count} complaints</span>
+          </div>
+        `);
+
+        markersRef.current.push(marker);
+      }
+    });
+
+    if (markersRef.current.length > 0) {
+      const group = new window.L.featureGroup(markersRef.current);
+      map.fitBounds(group.getBounds().pad(0.15));
+    }
+  }
+
+  return (
+    <div 
+      ref={mapRef} 
+      style={{ 
+        width: '100%', 
+        height: '290px', 
+        borderRadius: '8px', 
+        border: '1px solid #cbd8d5',
+        marginTop: '10px'
+      }} 
+    />
+  );
+}
 
 function App() {
   const [session, setSession] = useState(() => {
@@ -35,16 +150,93 @@ function App() {
   const [complaints, setComplaints] = useState([]);
   const [hotspots, setHotspots] = useState([]);
   const [analytics, setAnalytics] = useState(null);
-  const [question, setQuestion] = useState('Which wards had the most water complaints this month?');
+  const [question, setQuestion] = useState('Which places had the most water complaints this month?');
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState(null);
   const [form, setForm] = useState({
     text: 'Water pipe is leaking near the bus stop and flooding the lane.',
-    ward: 'Ward 12',
+    place: 'Metro Gate 12',
+    state: 'Delhi',
     lat: '28.6141',
     lng: '77.2092',
     voice_transcript: '',
   });
+
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [locationStatus, setLocationStatus] = useState('idle'); // 'idle' | 'success' | 'error' | 'manually_edited'
+  const [locationError, setLocationError] = useState('');
+  const [hotspotViewMode, setHotspotViewMode] = useState('list'); // 'list' | 'map'
+
+  const detectLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus('error');
+      setLocationError('Geolocation unsupported.');
+      return;
+    }
+
+    setDetectingLocation(true);
+    setLocationStatus('idle');
+    setLocationError('');
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        let detectedPlace = 'Unassigned';
+        let detectedState = '';
+
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=en`
+          );
+          if (response.ok) {
+            const data = await response.json();
+            const address = data.address || {};
+            detectedState = address.state || address.region || address.state_district || '';
+            detectedPlace =
+              address.suburb ||
+              address.neighbourhood ||
+              address.residential ||
+              address.city_district ||
+              address.village ||
+              address.subdistrict ||
+              address.county ||
+              address.municipality ||
+              'Unassigned';
+          }
+        } catch (e) {
+          console.error("Failed reverse geocoding:", e);
+        }
+
+        setForm((prev) => ({
+          ...prev,
+          lat: latitude.toFixed(6),
+          lng: longitude.toFixed(6),
+          place: detectedPlace !== 'Unassigned' ? detectedPlace : prev.place,
+          state: detectedState !== '' ? detectedState : prev.state,
+        }));
+        setLocationStatus('success');
+        setDetectingLocation(false);
+      },
+      (error) => {
+        let msg = 'Failed to get location.';
+        if (error.code === error.PERMISSION_DENIED) {
+          msg = 'Permission denied.';
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          msg = 'Position unavailable.';
+        } else if (error.code === error.TIMEOUT) {
+          msg = 'Timeout.';
+        }
+        setLocationStatus('error');
+        setLocationError(msg);
+        setDetectingLocation(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 0,
+      }
+    );
+  };
 
   const metrics = useMemo(() => {
     const active = complaints.filter((item) => !item.duplicate_of);
@@ -230,23 +422,86 @@ function App() {
           </label>
           <div className="split">
             <label>
-              Ward
-              <input value={form.ward} onChange={(event) => setForm({ ...form, ward: event.target.value })} />
+              Place
+              <input value={form.place || ''} onChange={(event) => setForm({ ...form, place: event.target.value })} />
             </label>
             <label>
-              Notify phone
-              <input value={session.user.phone} readOnly />
+              State
+              <input value={form.state || ''} onChange={(event) => setForm({ ...form, state: event.target.value })} />
             </label>
           </div>
-          <div className="split">
-            <label>
-              Latitude
-              <input value={form.lat} onChange={(event) => setForm({ ...form, lat: event.target.value })} />
-            </label>
-            <label>
-              Longitude
-              <input value={form.lng} onChange={(event) => setForm({ ...form, lng: event.target.value })} />
-            </label>
+          <label>
+            Notify phone
+            <input value={session.user.phone} readOnly />
+          </label>
+          <div className="location-row-container">
+            <div className="location-header">
+              <span className="location-title">Coordinates</span>
+              <button
+                type="button"
+                className={`location-detect-btn ${detectingLocation ? 'loading' : ''} ${locationStatus === 'success' ? 'success' : ''}`}
+                onClick={detectLocation}
+                disabled={detectingLocation}
+              >
+                {detectingLocation ? (
+                  <RefreshCw className="spin" size={14} />
+                ) : (
+                  <Compass size={14} />
+                )}
+                {detectingLocation ? 'Accessing GPS...' : locationStatus === 'success' ? 'GPS Locked' : 'Use Device GPS'}
+              </button>
+            </div>
+            
+            <div className="split">
+              <label>
+                Latitude
+                <input
+                  value={form.lat}
+                  onChange={(event) => {
+                    setForm({ ...form, lat: event.target.value });
+                    setLocationStatus('manually_edited');
+                  }}
+                />
+              </label>
+              <label>
+                Longitude
+                <input
+                  value={form.lng}
+                  onChange={(event) => {
+                    setForm({ ...form, lng: event.target.value });
+                    setLocationStatus('manually_edited');
+                  }}
+                />
+              </label>
+            </div>
+
+            {locationStatus === 'success' && (
+              <div className="location-status-badge success-badge">
+                <Compass size={14} className="pulse-icon" />
+                <span>Device GPS active and location locked.</span>
+              </div>
+            )}
+            {locationStatus === 'manually_edited' && (
+              <div className="location-status-badge info-badge">
+                <span>Coordinates modified manually.</span>
+                <button
+                  type="button"
+                  className="location-text-btn"
+                  onClick={() => {
+                    setForm({ ...form, lat: '28.6141', lng: '77.2092', place: 'Metro Gate 12', state: 'Delhi' });
+                    setLocationStatus('idle');
+                  }}
+                >
+                  Reset Default
+                </button>
+              </div>
+            )}
+            {locationStatus === 'error' && (
+              <div className="location-status-badge error-badge">
+                <span>⚠️ {locationError}</span>
+                <button type="button" className="location-text-btn" onClick={detectLocation}>Retry</button>
+              </div>
+            )}
           </div>
           <label>
             Voice transcript
@@ -268,23 +523,45 @@ function App() {
         </form>
 
         <section className="panel">
-          <div className="panelTitle">
-            <MapPin size={18} />
-            <h2>Hotspots</h2>
+          <div className="panelTitle" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <MapPin size={18} />
+              <h2>Hotspots</h2>
+            </div>
+            <div className="map-view-toggle">
+              <button 
+                type="button" 
+                className={hotspotViewMode === 'list' ? 'active' : ''} 
+                onClick={() => setHotspotViewMode('list')}
+              >
+                List
+              </button>
+              <button 
+                type="button" 
+                className={hotspotViewMode === 'map' ? 'active' : ''} 
+                onClick={() => setHotspotViewMode('map')}
+              >
+                Map
+              </button>
+            </div>
           </div>
-          <div className="hotspotList">
-            {hotspots.length === 0 && <p className="muted">No hotspots yet.</p>}
-            {hotspots.map((hotspot) => (
-              <article className="hotspot" key={`${hotspot.ward}-${hotspot.category}`}>
-                <div>
-                  <strong>{hotspot.ward}</strong>
-                  <span>{hotspot.category.replace('_', ' ')}</span>
-                </div>
-                <div className={`pill ${hotspot.priority}`}>{hotspot.priority}</div>
-                <b>{hotspot.count}</b>
-              </article>
-            ))}
-          </div>
+          {hotspotViewMode === 'list' ? (
+            <div className="hotspotList">
+              {hotspots.length === 0 && <p className="muted">No hotspots yet.</p>}
+              {hotspots.map((hotspot) => (
+                <article className="hotspot" key={`${hotspot.place}-${hotspot.category}`}>
+                  <div>
+                    <strong>{hotspot.place}</strong>
+                    <span>{hotspot.category.replace('_', ' ')}</span>
+                  </div>
+                  <div className={`pill ${hotspot.priority}`}>{hotspot.priority}</div>
+                  <b>{hotspot.count}</b>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <HotspotMap hotspots={hotspots} />
+          )}
         </section>
 
         <section className="panel analytics">
@@ -331,7 +608,7 @@ function App() {
               <div>
                 <strong>{complaint.classification.summary}</strong>
                 <span>
-                  {complaint.ward} / {complaint.classification.department} / {complaint.reporter_username || 'citizen'}
+                  {complaint.place}{complaint.state ? `, ${complaint.state}` : ''} / {complaint.classification.department} / {complaint.reporter_username || 'citizen'}
                 </span>
               </div>
               <span>{complaint.classification.category.replace('_', ' ')}</span>

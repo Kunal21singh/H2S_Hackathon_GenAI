@@ -88,7 +88,8 @@ async def me(current_user: User = Depends(get_current_user)) -> UserPublic:
 @app.post("/complaints", response_model=Complaint)
 async def create_complaint(
     text: str = Form(...),
-    ward: str = Form("Unassigned"),
+    place: str = Form("Unassigned"),
+    state: str | None = Form(None),
     lat: float | None = Form(None),
     lng: float | None = Form(None),
     reporter_name: str | None = Form(None),
@@ -113,7 +114,8 @@ async def create_complaint(
         voice_transcript=voice_transcript,
         photo_filename=photo.filename if photo else None,
         photo_content_type=photo.content_type if photo else None,
-        ward=ward,
+        place=place,
+        state=state,
         lat=lat,
         lng=lng,
         reporter_name=reporter_name or current_user.full_name,

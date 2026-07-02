@@ -25,7 +25,7 @@ async def _try_bigquery_answer(settings: Settings, question: str) -> AnalyticsAn
         prompt = f"""
 You convert civic analytics questions into BigQuery Standard SQL.
 Use only this table: {table}.
-Columns: id, text, ward, lat, lng, status, category, department, priority, duplicate_of, created_at.
+Columns: id, text, ward, state, lat, lng, status, category, department, priority, duplicate_of, created_at.
 Return only SQL. Question: {question}
 """
         response = await model.generate_content_async(prompt)
@@ -46,15 +46,15 @@ Return only SQL. Question: {question}
 def _local_answer(question: str, complaints: list[Complaint]) -> AnalyticsAnswer:
     normalized = question.lower()
     active = [item for item in complaints if not item.duplicate_of]
-    if "ward" in normalized and ("most" in normalized or "top" in normalized):
-        counts = Counter(item.ward for item in active)
-        rows = [{"ward": ward, "complaints": count} for ward, count in counts.most_common(5)]
-        answer = _format_leader("Top wards by complaints", rows, "ward")
+    if any(word in normalized for word in ["ward", "place"]) and ("most" in normalized or "top" in normalized):
+        counts = Counter(item.place for item in active)
+        rows = [{"place": place, "complaints": count} for place, count in counts.most_common(5)]
+        answer = _format_leader("Top places by complaints", rows, "place")
     elif any(word in normalized for word in ["water", "leak"]):
         filtered = [item for item in active if item.classification.category.value == "water_leak"]
-        counts = Counter(item.ward for item in filtered)
-        rows = [{"ward": ward, "water_complaints": count} for ward, count in counts.most_common(5)]
-        answer = _format_leader("Water complaint concentration", rows, "ward")
+        counts = Counter(item.place for item in filtered)
+        rows = [{"place": place, "water_complaints": count} for place, count in counts.most_common(5)]
+        answer = _format_leader("Water complaint concentration", rows, "place")
     elif "priority" in normalized or "urgent" in normalized:
         counts = Counter(item.classification.priority for item in active)
         rows = [{"priority": priority, "complaints": count} for priority, count in counts.most_common()]

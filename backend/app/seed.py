@@ -6,10 +6,10 @@ from app.services.storage import ComplaintStore
 
 
 SAMPLES = [
-    ("Large pothole outside metro gate causing traffic slowdown", "Ward 12", 28.6139, 77.2090, ComplaintCategory.pothole, "Roads", "high"),
-    ("Garbage pile has not been collected near market road", "Ward 09", 28.6202, 77.2150, ComplaintCategory.garbage, "Sanitation", "medium"),
-    ("Water pipe leak flooding the service lane", "Ward 12", 28.6142, 77.2088, ComplaintCategory.water_leak, "Water Works", "high"),
-    ("Streetlight not working at the park entrance", "Ward 04", 28.6005, 77.2210, ComplaintCategory.streetlight, "Electrical", "medium"),
+    ("Large pothole outside metro gate causing traffic slowdown", "Metro Gate 12", 28.6139, 77.2090, ComplaintCategory.pothole, "Roads", "high"),
+    ("Garbage pile has not been collected near market road", "Market Road 09", 28.6202, 77.2150, ComplaintCategory.garbage, "Sanitation", "medium"),
+    ("Water pipe leak flooding the service lane", "Metro Gate 12", 28.6142, 77.2088, ComplaintCategory.water_leak, "Water Works", "high"),
+    ("Streetlight not working at the park entrance", "Park Entrance 04", 28.6005, 77.2210, ComplaintCategory.streetlight, "Electrical", "medium"),
 ]
 
 
@@ -19,11 +19,11 @@ async def main() -> None:
     if existing:
         print(f"Seed skipped: {len(existing)} complaint(s) already present")
         return
-    for text, ward, lat, lng, category, department, priority in SAMPLES:
+    for text, place, lat, lng, category, department, priority in SAMPLES:
         await store.add(
             Complaint(
                 text=text,
-                ward=ward,
+                place=place,
                 lat=lat,
                 lng=lng,
                 classification=Classification(
