@@ -178,9 +178,23 @@ h2 {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(320px, 0.95fr) minmax(280px, 0.75fr) minmax(360px, 1fr);
+  grid-template-columns: 1fr 1.6fr;
   gap: 16px;
   align-items: start;
+}
+
+.workspace-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hotspot-map-container {
+  width: 100%;
+  height: 570px;
+  border-radius: 8px;
+  border: 1px solid #cbd8d5;
+  margin-top: 10px;
 }
 
 .panel {
@@ -376,13 +390,12 @@ td {
 }
 
 @media (max-width: 1050px) {
-  .metrics,
-  .workspace {
+  .metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .analytics {
-    grid-column: span 2;
+  .workspace {
+    grid-template-columns: 1fr;
   }
 
   .row {
@@ -407,14 +420,9 @@ td {
   }
 
   .metrics,
-  .workspace,
   .split,
   .row {
     grid-template-columns: 1fr;
-  }
-
-  .analytics {
-    grid-column: auto;
   }
 }
 

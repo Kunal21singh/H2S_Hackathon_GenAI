@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class ComplaintCategory(str, Enum):
@@ -39,6 +39,7 @@ class Complaint(BaseModel):
     photo_filename: str | None = None
     photo_content_type: str | None = None
     place: str = "Unassigned"
+    ward: str | None = None
     state: str | None = None
     lat: float | None = None
     lng: float | None = None
@@ -52,17 +53,58 @@ class Complaint(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+    @model_validator(mode="before")
+    @classmethod
+    def sync_place_and_ward(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            ward = data.get("ward")
+            place = data.get("place")
+            if ward is not None and place is None:
+                data["place"] = ward
+            elif place is not None and ward is None:
+                data["ward"] = place
+            elif place is None and ward is None:
+                data["place"] = "Unassigned"
+                data["ward"] = "Unassigned"
+            else:
+                if place == "Unassigned" and ward != "Unassigned":
+                    data["place"] = ward
+                elif ward == "Unassigned" and place != "Unassigned":
+                    data["ward"] = place
+        return data
+
 
 class ComplaintCreate(BaseModel):
     text: str
     voice_transcript: str | None = None
     place: str = "Unassigned"
+    ward: str | None = None
     state: str | None = None
     lat: float | None = None
     lng: float | None = None
     reporter_name: str | None = None
     reporter_username: str | None = None
     contact: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def sync_place_and_ward(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            ward = data.get("ward")
+            place = data.get("place")
+            if ward is not None and place is None:
+                data["place"] = ward
+            elif place is not None and ward is None:
+                data["ward"] = place
+            elif place is None and ward is None:
+                data["place"] = "Unassigned"
+                data["ward"] = "Unassigned"
+            else:
+                if place == "Unassigned" and ward != "Unassigned":
+                    data["place"] = ward
+                elif ward == "Unassigned" and place != "Unassigned":
+                    data["ward"] = place
+        return data
 
 
 class UserPublic(BaseModel):

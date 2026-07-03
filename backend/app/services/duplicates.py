@@ -10,7 +10,15 @@ def find_duplicates(new_complaint: Complaint, existing: list[Complaint]) -> tupl
             continue
         distance = _distance_meters(new_complaint.lat, new_complaint.lng, complaint.lat, complaint.lng)
         text_overlap = _jaccard(new_complaint.text, complaint.text)
-        if (distance is not None and distance <= 250) or text_overlap >= 0.45:
+        
+        # If coordinates are available, they must be nearby (<= 250m) and have text similarity.
+        # If coordinates are missing, we fall back to text similarity only.
+        if distance is not None:
+            is_dup = distance <= 250 and text_overlap >= 0.45
+        else:
+            is_dup = text_overlap >= 0.45
+
+        if is_dup:
             score = (1 / max(distance or 1, 1)) + text_overlap
             matches.append((complaint.id, score))
 

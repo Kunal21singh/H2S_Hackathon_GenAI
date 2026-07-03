@@ -238,6 +238,36 @@ function App() {
     );
   };
 
+  const geocodeAddress = async (placeName, stateName) => {
+    if (!placeName || placeName === 'Unassigned') return null;
+    try {
+      const query = [placeName, stateName].filter(Boolean).join(', ');
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.length > 0) {
+          const { lat, lon } = data[0];
+          const parsedLat = parseFloat(lat).toFixed(6);
+          const parsedLng = parseFloat(lon).toFixed(6);
+          setForm((prev) => ({
+            ...prev,
+            lat: parsedLat,
+            lng: parsedLng,
+          }));
+          if (locationStatus === 'error') {
+            setLocationStatus('idle');
+          }
+          return { lat: parsedLat, lng: parsedLng };
+        }
+      }
+    } catch (e) {
+      console.error("Failed geocoding:", e);
+    }
+    return null;
+  };
+
   const metrics = useMemo(() => {
     const active = complaints.filter((item) => !item.duplicate_of);
     const critical = active.filter((item) => ['high', 'critical'].includes(item.classification.priority)).length;
@@ -313,14 +343,26 @@ function App() {
 
   async function submitComplaint(event) {
     event.preventDefault();
+    const formElements = event.currentTarget.elements;
     setLoading(true);
     setNotice(null);
     try {
+      let finalLat = form.lat;
+      let finalLng = form.lng;
+
+      if (locationStatus === 'idle' || locationStatus === 'error') {
+        const result = await geocodeAddress(form.place, form.state);
+        if (result) {
+          finalLat = result.lat;
+          finalLng = result.lng;
+        }
+      }
+
       const payload = new FormData();
-      Object.entries(form).forEach(([key, value]) => {
+      Object.entries({ ...form, lat: finalLat, lng: finalLng }).forEach(([key, value]) => {
         if (String(value).trim() !== '') payload.append(key, value);
       });
-      const fileInput = event.currentTarget.elements.namedItem('photo');
+      const fileInput = formElements.namedItem('photo');
       const file = fileInput?.files?.[0];
       if (file) payload.append('photo', file);
 
@@ -423,11 +465,27 @@ function App() {
           <div className="split">
             <label>
               Place
-              <input value={form.place || ''} onChange={(event) => setForm({ ...form, place: event.target.value })} />
+              <input 
+                value={form.place || ''} 
+                onChange={(event) => setForm({ ...form, place: event.target.value })} 
+                onBlur={() => {
+                  if (locationStatus === 'idle' || locationStatus === 'error') {
+                    geocodeAddress(form.place, form.state);
+                  }
+                }}
+              />
             </label>
             <label>
               State
-              <input value={form.state || ''} onChange={(event) => setForm({ ...form, state: event.target.value })} />
+              <input 
+                value={form.state || ''} 
+                onChange={(event) => setForm({ ...form, state: event.target.value })} 
+                onBlur={() => {
+                  if (locationStatus === 'idle' || locationStatus === 'error') {
+                    geocodeAddress(form.place, form.state);
+                  }
+                }}
+              />
             </label>
           </div>
           <label>

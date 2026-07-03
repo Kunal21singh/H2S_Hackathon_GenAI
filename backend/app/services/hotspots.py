@@ -7,9 +7,11 @@ PRIORITY_SCORE = {"low": 1, "medium": 2, "high": 3, "critical": 4}
 
 
 def build_hotspots(complaints: list[Complaint]) -> list[Hotspot]:
+    print("SERVER build_hotspots complaints:", [(c.id, c.place, c.duplicate_of) for c in complaints])
     buckets: dict[tuple[str, str], list[Complaint]] = defaultdict(list)
+    existing_ids = {c.id for c in complaints}
     for complaint in complaints:
-        if complaint.duplicate_of:
+        if complaint.duplicate_of and complaint.duplicate_of in existing_ids:
             continue
         buckets[(complaint.place or "Unassigned", complaint.classification.category.value)].append(complaint)
 
