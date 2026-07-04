@@ -52,6 +52,10 @@ class Complaint(BaseModel):
     nearby_duplicate_ids: list[str] = []
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    resolution_photo_filename: str | None = None
+    resolution_photo_content_type: str | None = None
+    completed_at: datetime | None = None
+    completed_by: str | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -112,6 +116,7 @@ class UserPublic(BaseModel):
     username: str
     full_name: str
     phone: str
+    user_type: str = "Citizen"
     is_active: bool
     created_at: datetime
 
@@ -125,11 +130,13 @@ class UserRegister(BaseModel):
     full_name: str = Field(min_length=2, max_length=80)
     phone: str = Field(min_length=7, max_length=20)
     password: str = Field(min_length=6, max_length=128)
+    user_type: str = "Citizen"
 
 
 class UserLogin(BaseModel):
     username: str
     password: str
+    user_type: str = "Citizen"
 
 
 class AuthSession(BaseModel):

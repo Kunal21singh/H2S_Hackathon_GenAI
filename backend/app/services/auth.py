@@ -29,6 +29,7 @@ class UserStore:
             username=username,
             full_name=payload.full_name.strip(),
             phone=_normalize_phone(payload.phone),
+            user_type=payload.user_type,
             is_active=True,
             password_hash=_hash_password(payload.password),
             created_at=datetime.now(timezone.utc),
@@ -43,6 +44,8 @@ class UserStore:
             if user.username.lower() == username and _verify_password(payload.password, user.password_hash):
                 if not user.is_active:
                     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is not active.")
+                if getattr(user, "user_type", "Citizen") != payload.user_type:
+                    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user type for this account.")
                 return user
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password.")
 
