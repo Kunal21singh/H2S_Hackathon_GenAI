@@ -12,6 +12,7 @@ import {
   LogOut,
   MapPin,
   MessageSquare,
+  Mic,
   RefreshCw,
   Send,
   ShieldCheck,
@@ -804,6 +805,59 @@ function App() {
   const [locationStatus, setLocationStatus] = useState('idle'); // 'idle' | 'success' | 'error' | 'manually_edited'
   const [locationError, setLocationError] = useState('');
 
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = React.useRef(null);
+
+  const startListening = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.");
+      return;
+    }
+    const rec = new SpeechRecognition();
+    rec.continuous = true;
+    rec.interimResults = false;
+    rec.lang = 'en-US';
+
+    rec.onstart = () => {
+      setIsListening(true);
+    };
+
+    rec.onresult = (event) => {
+      const transcript = event.results[event.results.length - 1][0].transcript;
+      setForm((prev) => ({
+        ...prev,
+        voice_transcript: (prev.voice_transcript ? prev.voice_transcript + ' ' : '') + transcript.trim()
+      }));
+    };
+
+    rec.onerror = (e) => {
+      console.error(e);
+      setIsListening(false);
+    };
+
+    rec.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = rec;
+    rec.start();
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  };
+
   const detectLocation = () => {
     if (!navigator.geolocation) {
       setLocationStatus('error');
@@ -1297,13 +1351,39 @@ function App() {
                 </div>
               )}
             </div>
-            <label>
-              Voice transcript
-              <input
-                value={form.voice_transcript}
-                onChange={(event) => setForm({ ...form, voice_transcript: event.target.value })}
-                placeholder="Optional speech-to-text transcript"
-              />
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative' }}>
+              <span>Voice transcript</span>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+                <input
+                  value={form.voice_transcript}
+                  onChange={(event) => setForm({ ...form, voice_transcript: event.target.value })}
+                  placeholder={isListening ? "Listening... Speak now..." : "Optional speech-to-text transcript"}
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  className={`iconButton ${isListening ? 'listening-active' : ''}`}
+                  title={isListening ? "Stop listening" : "Record voice transcript"}
+                  style={{
+                    height: '38px',
+                    width: '38px',
+                    minHeight: '38px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: isListening ? '#ef4444' : '#f1f5f9',
+                    color: isListening ? '#ffffff' : '#475569',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <Mic className={isListening ? 'pulse-icon' : ''} size={16} />
+                </button>
+              </div>
             </label>
             <label className="fileInput">
               <Upload size={18} />
