@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 
 from app.config import Settings, get_settings
 from app.models import (
+    AdminComplaintUpdate,
     AnalyticsAnswer,
     AnalyticsQuestion,
     AuthSession,
@@ -154,7 +155,7 @@ async def create_complaint(
 def _filter_complaints_for_user(complaints: list[Complaint], user: User) -> list[Complaint]:
     user_type = getattr(user, "user_type", "Citizen")
     
-    if user_type == "Prime Minister":
+    if user_type in ("Prime Minister", "Admin"):
         return complaints
         
     if user_type == "Chief Minister":
@@ -180,7 +181,14 @@ def _filter_complaints_for_user(complaints: list[Complaint], user: User) -> list
     else:
         departments = []
         
-    return [c for c in complaints if c.classification.department in departments]
+    user_state = getattr(user, "state", None)
+    if not user_state:
+        return []
+    return [
+        c for c in complaints 
+        if c.classification.department in departments 
+        and c.state and c.state.strip().lower() == user_state.strip().lower()
+    ]
 
 
 @app.get("/complaints", response_model=list[Complaint])
@@ -331,3 +339,57 @@ async def read_notification(
 ) -> dict:
     await notification_store.mark_read(notification_id)
     return {"status": "ok"}
+
+
+@app.get("/auth/users", response_model=list[UserPublic])
+async def list_users(
+    user_store: UserStore = Depends(get_user_store),
+    current_user: User = Depends(get_current_user),
+) -> list[UserPublic]:
+    if getattr(current_user, "user_type", "Citizen") != "Admin":
+        raise HTTPException(status_code=403, detail="Only admins can list users.")
+    return user_store.list_users()
+
+
+@app.delete("/auth/users/{username}")
+async def delete_user(
+    username: str,
+    user_store: UserStore = Depends(get_user_store),
+    current_user: User = Depends(get_current_user),
+):
+    if getattr(current_user, "user_type", "Citizen") != "Admin":
+        raise HTTPException(status_code=403, detail="Only admins can delete users.")
+    success = user_store.delete_user(username)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": "User deleted successfully."}
+
+
+@app.delete("/complaints/{complaint_id}")
+async def delete_complaint(
+    complaint_id: str,
+    store: ComplaintStore = Depends(get_store),
+    current_user: User = Depends(get_current_user),
+):
+    if getattr(current_user, "user_type", "Citizen") != "Admin":
+        raise HTTPException(status_code=403, detail="Only admins can delete complaints.")
+    success = await store.delete_complaint(complaint_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+    return {"message": "Complaint deleted successfully."}
+
+
+@app.patch("/complaints/{complaint_id}", response_model=Complaint)
+async def admin_modify_complaint(
+    complaint_id: str,
+    payload: AdminComplaintUpdate,
+    store: ComplaintStore = Depends(get_store),
+    current_user: User = Depends(get_current_user),
+) -> Complaint:
+    if getattr(current_user, "user_type", "Citizen") != "Admin":
+        raise HTTPException(status_code=403, detail="Only admins can modify complaints.")
+    
+    complaint = await store.admin_modify(complaint_id, payload)
+    if not complaint:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+    return complaint

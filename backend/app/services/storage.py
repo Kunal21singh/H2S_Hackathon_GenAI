@@ -158,6 +158,67 @@ class ComplaintStore:
             self._write_local(items)
         return updated
 
+    async def delete_complaint(self, complaint_id: str) -> bool:
+        items = await self.list()
+        filtered = [item for item in items if item.id != complaint_id]
+        if len(filtered) == len(items):
+            return False
+        if self._firestore_client:
+            self._firestore_client.collection(self.settings.firestore_collection).document(complaint_id).delete()
+        else:
+            self._write_local(filtered)
+        return True
+
+    async def admin_modify(self, complaint_id: str, payload: Any) -> Complaint | None:
+        items = await self.list()
+        updated: Complaint | None = None
+        for item in items:
+            if item.id == complaint_id:
+                if payload.text is not None:
+                    item.text = payload.text
+                if payload.place is not None:
+                    item.place = payload.place
+                    item.ward = payload.place
+                if payload.state is not None:
+                    item.state = payload.state
+                if payload.status is not None:
+                    from app.models import ComplaintStatus
+                    item.status = ComplaintStatus(payload.status)
+                
+                # Classification modifications
+                if payload.department is not None:
+                    item.classification.department = payload.department
+                if payload.priority is not None:
+                    item.classification.priority = payload.priority
+                if payload.category is not None:
+                    from app.models import ComplaintCategory
+                    item.classification.category = ComplaintCategory(payload.category)
+                
+                item.updated_at = datetime.now(timezone.utc)
+                
+                # Log admin modification in timeline
+                from app.models import TimelineEvent
+                if not hasattr(item, 'timeline') or item.timeline is None:
+                    item.timeline = []
+                item.timeline.append(TimelineEvent(
+                    status=item.status.value,
+                    timestamp=item.updated_at,
+                    description="Grievance details updated by System Administrator.",
+                    actor="Admin"
+                ))
+                
+                updated = item
+                break
+        if not updated:
+            return None
+        if self._firestore_client:
+            self._firestore_client.collection(self.settings.firestore_collection).document(complaint_id).set(
+                updated.model_dump(mode="json")
+            )
+        else:
+            self._write_local(items)
+        return updated
+
     def _read_local(self) -> list[Complaint]:
         if not self.local_path.exists():
             return []

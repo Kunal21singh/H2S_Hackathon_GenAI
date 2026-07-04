@@ -45,8 +45,6 @@ class UserStore:
             if user.username.lower() == username and _verify_password(payload.password, user.password_hash):
                 if not user.is_active:
                     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is not active.")
-                if getattr(user, "user_type", "Citizen") != payload.user_type:
-                    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user type for this account.")
                 return user
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password.")
 
@@ -77,6 +75,18 @@ class UserStore:
         if not hmac.compare_digest(signature, expected):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session token.")
         return self.get_by_username(username)
+
+    def list_users(self) -> list[UserPublic]:
+        return [_public_user(u) for u in self._read_users()]
+
+    def delete_user(self, username: str) -> bool:
+        users = self._read_users()
+        normalized = _normalize_username(username)
+        updated = [u for u in users if u.username.lower() != normalized]
+        if len(updated) == len(users):
+            return False
+        self._write_users(updated)
+        return True
 
     def _read_users(self) -> list[User]:
         if not self.local_path.exists():

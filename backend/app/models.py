@@ -146,7 +146,6 @@ class UserRegister(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
-    user_type: str = "Citizen"
 
 
 class AuthSession(BaseModel):
@@ -178,3 +177,13 @@ class AnalyticsAnswer(BaseModel):
 
 class CommentCreate(BaseModel):
     comment: str
+
+
+class AdminComplaintUpdate(BaseModel):
+    text: str | None = None
+    place: str | None = None
+    state: str | None = None
+    department: str | None = None
+    priority: str | None = None
+    category: str | None = None
+    status: str | None = None
