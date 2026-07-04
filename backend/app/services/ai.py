@@ -58,7 +58,7 @@ async def classify_complaint(
         import google.generativeai as genai
 
         genai.configure(api_key=settings.google_api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         payload: list[Any] = [
             "Classify this civic grievance. Return only JSON with keys category, department, priority, summary, tags, confidence. "
             "Allowed categories: pothole, garbage, water_leak, streetlight, drainage, traffic_signal, other. "

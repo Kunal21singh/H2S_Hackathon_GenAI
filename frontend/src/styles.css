@@ -919,8 +919,10 @@ td {
 }
 
 .analytics-chat-popup {
-  width: 360px;
-  max-height: 480px;
+  width: 600px;
+  height: 550px;
+  max-height: 80vh;
+  max-width: 90vw;
   background: #ffffff;
   border: 1px solid var(--border-color);
   border-radius: 12px;
@@ -1004,6 +1006,7 @@ td {
 
 .answer-text {
   line-height: 1.4;
+  white-space: pre-wrap;
 }
 
 .answer-source {

@@ -782,6 +782,8 @@ function App() {
   const [hotspots, setHotspots] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [question, setQuestion] = useState('Which places had the most water complaints this month?');
+  const [chatHistory, setChatHistory] = useState([]);
+  const [isAsking, setIsAsking] = useState(false);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState(null);
   const [form, setForm] = useState({
@@ -1082,23 +1084,42 @@ function App() {
 
   async function askQuestion(event) {
     event.preventDefault();
-    setLoading(true);
+    const queryText = question.trim();
+    if (!queryText) return;
+    
+    setQuestion('');
+    setIsAsking(true);
     setNotice(null);
+    
+    setChatHistory(prev => [...prev, { sender: 'user', text: queryText }]);
+    
     try {
       const res = await fetch(`${API_BASE}/analytics/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders(session.token) },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question: queryText }),
       });
       if (!res.ok) {
         const detail = await readError(res);
         throw new Error(detail || 'Analytics request failed.');
       }
-      setAnalytics(await res.json());
+      const data = await res.json();
+      setAnalytics(data);
+      setChatHistory(prev => [...prev, {
+        sender: 'ai',
+        text: data.answer,
+        source: data.source,
+        rows: data.rows || []
+      }]);
     } catch (error) {
-      setNotice({ type: 'error', text: error.message || `Unable to reach ${API_BASE}.` });
+      setChatHistory(prev => [...prev, {
+        sender: 'ai',
+        text: `Oops, I encountered an issue: ${error.message || 'Connection failed.'}`,
+        source: 'system-error',
+        rows: []
+      }]);
     } finally {
-      setLoading(false);
+      setIsAsking(false);
     }
   }
 
@@ -1782,34 +1803,58 @@ function App() {
               </button>
             </div>
             
-            <div className="analytics-chat-body">
-              <p className="chat-welcome-msg">
+            <div className="analytics-chat-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', flex: 1, padding: '16px' }}>
+              <p className="chat-welcome-msg" style={{ margin: 0, color: '#64748b', fontSize: '0.85rem' }}>
                 Ask me stats about complaints, hotspots, or priorities!
               </p>
               
-              {analytics && (
-                <div className="chat-answer-bubble">
-                  <div className="answer-text">{analytics.answer}</div>
-                  <small className="answer-source">{analytics.source}</small>
-                  {analytics.rows.length > 0 && (
-                    <div className="table-container" style={{ overflowX: 'auto', marginTop: '8px' }}>
-                      <table>
-                        <tbody>
-                          {analytics.rows.map((row, index) => (
-                            <tr key={index}>
-                              {Object.values(row).map((value, cellIndex) => (
-                                <td key={cellIndex} style={{ fontSize: '0.78rem', padding: '6px 4px' }}>{String(value)}</td>
+              {chatHistory.map((msg, index) => (
+                <div 
+                  key={index} 
+                  style={{
+                    alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                    background: msg.sender === 'user' ? 'var(--color-primary)' : '#f1f5f9',
+                    color: msg.sender === 'user' ? '#ffffff' : '#0f172a',
+                    padding: '10px 14px',
+                    borderRadius: msg.sender === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
+                    maxWidth: '85%',
+                    fontSize: '0.86rem',
+                    boxShadow: 'var(--shadow-sm)',
+                    wordBreak: 'break-word'
+                  }}
+                >
+                  {msg.sender === 'user' ? (
+                    <div>{msg.text}</div>
+                  ) : (
+                    <div>
+                      <div className="answer-text" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{msg.text}</div>
+                      <small style={{ display: 'block', marginTop: '6px', fontSize: '0.72rem', color: msg.sender === 'user' ? '#93c5fd' : '#64748b' }}>
+                        Source: {msg.source}
+                      </small>
+                      {msg.rows && msg.rows.length > 0 && (
+                        <div className="table-container" style={{ overflowX: 'auto', marginTop: '8px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '6px' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <tbody>
+                              {msg.rows.map((row, rIdx) => (
+                                <tr key={rIdx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                  {Object.entries(row).map(([k, v], cIdx) => (
+                                    <td key={cIdx} style={{ fontSize: '0.74rem', padding: '4px 6px', color: '#334155' }}>
+                                      <strong>{k}:</strong> {String(v)}
+                                    </td>
+                                  ))}
+                                </tr>
                               ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-              {loading && (
-                <div className="chat-loading-bubble">
+              ))}
+              
+              {isAsking && (
+                <div className="chat-loading-bubble" style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#64748b' }}>
                   <RefreshCw className="spin" size={14} />
                   <span>Analyzing database...</span>
                 </div>

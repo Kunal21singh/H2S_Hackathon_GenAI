@@ -12,11 +12,65 @@ async def answer_question(settings: Settings, question: str, complaints: list[Co
         if vertex_answer:
             return vertex_answer
 
+    # Try Gemini Conversational Agent first to answer accurately using active complaints database context
+    agent_answer = await _gemini_analytics_agent(settings, question, complaints)
+    if agent_answer:
+        return agent_answer
+
     if settings.google_api_key and settings.google_cloud_project:
         cloud_answer = await _try_bigquery_answer(settings, question)
         if cloud_answer:
             return cloud_answer
     return _local_answer(question, complaints)
+
+
+async def _gemini_analytics_agent(settings: Settings, question: str, complaints: list[Complaint]) -> AnalyticsAnswer | None:
+    try:
+        import google.generativeai as genai
+        import json
+        if not settings.google_api_key:
+            return None
+        
+        genai.configure(api_key=settings.google_api_key)
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        
+        complaint_data = []
+        for c in complaints:
+            complaint_data.append({
+                "id": c.id,
+                "text": c.text,
+                "place": c.place,
+                "state": c.state,
+                "status": c.status.value,
+                "category": c.classification.category.value,
+                "department": c.classification.department,
+                "priority": c.classification.priority,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+            })
+            
+        prompt = f"""
+You are the CivicPulse Analytics Assistant, a Vertex AI conversational agent designed to analyze citizen complaints and provide accurate, natural language statistics and insights.
+
+Below is the list of active complaints in the system in JSON format:
+{json.dumps(complaint_data, indent=2)}
+
+Please answer the user's question accurately using only the data provided above.
+Provide a clear, detailed, and polite response in natural language. Use markdown list formats if necessary to list findings.
+User Question: {question}
+"""
+        response = await model.generate_content_async(prompt)
+        answer_text = response.text.strip()
+        
+        return AnalyticsAnswer(
+            question=question,
+            answer=answer_text,
+            sql=None,
+            rows=[],
+            source="vertex-ai-gemini-agent",
+        )
+    except Exception as e:
+        print(f"Gemini agent analysis error: {e}")
+        return None
 
 
 async def _try_vertex_ai_search(settings: Settings, question: str) -> AnalyticsAnswer | None:
@@ -94,7 +148,7 @@ async def _try_bigquery_answer(settings: Settings, question: str) -> AnalyticsAn
 
         table = f"`{settings.google_cloud_project}.{settings.bigquery_dataset}.{settings.bigquery_table}`"
         genai.configure(api_key=settings.google_api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         prompt = f"""
 You convert civic analytics questions into BigQuery Standard SQL.
 Use only this table: {table}.
