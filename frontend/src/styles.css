@@ -1146,31 +1146,22 @@ td {
   }
 }
 
-/* Executive Monitor Table Styling */
-.executive-monitor table {
+/* Executive Monitor Card Layout Styling */
+.monitor-card {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: 220px;
   width: 100%;
-  border-collapse: collapse;
-  margin: 0;
+  height: 130px;
+  box-sizing: border-box;
 }
 
-.executive-monitor th {
-  background: #f8fafc;
-  color: var(--color-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid #e2e8f0;
+.monitor-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md) !important;
+  border-color: var(--color-primary-hover) !important;
 }
 
-.executive-monitor tr {
-  transition: background-color 0.15s ease;
-}
-
-.executive-monitor tbody tr:hover {
-  background-color: #f1f5f9 !important;
-}
-
-.executive-monitor td {
-  border-bottom: 1px solid #f1f5f9;
+.monitor-card.active {
+  border-color: var(--color-primary) !important;
+  background-color: #eff6ff !important;
 }

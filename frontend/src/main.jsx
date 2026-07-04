@@ -194,54 +194,70 @@ function ExecutiveMonitor({ user, complaints }) {
           <h2>National Executive Monitor (PM)</h2>
         </div>
         <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
-          Click a state below to view department-level grievance performance.
+          Select a state below to view department-level grievance performance.
         </p>
-        <div style={{ flex: '1 1 auto', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '180px' }}>
-          <table style={{ margin: 0, borderCollapse: 'collapse', width: '100%' }}>
-            <thead>
-              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'left', fontWeight: 'bold', border: 'none' }}>State</th>
-                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold', border: 'none' }}>Total</th>
-                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold', border: 'none' }}>Active</th>
-                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold', border: 'none' }}>Resolved</th>
-                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold', border: 'none' }}>Rate</th>
-              </tr>
-            </thead>
-            <tbody>
-              {statesList.length === 0 ? (
-                <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '12px', fontSize: '0.85rem' }}>No state data found.</td>
-                </tr>
-              ) : (
-                statesList.map((st) => (
-                  <tr 
-                    key={st.name} 
-                    onClick={() => setSelectedState(st.name === selectedState ? null : st.name)}
-                    style={{ 
-                      cursor: 'pointer', 
-                      background: st.name === selectedState ? '#eff6ff' : 'transparent',
-                      borderBottom: '1px solid #f1f5f9',
-                      transition: 'background-color 0.15s ease'
-                    }}
-                  >
-                    <td style={{ padding: '8px 12px', fontWeight: '600', fontSize: '0.85rem', border: 'none' }}>{st.name}</td>
-                    <td style={{ padding: '8px 12px', textAlign: 'center', fontSize: '0.85rem', border: 'none' }}>{st.total}</td>
-                    <td style={{ padding: '8px 12px', textAlign: 'center', color: '#dc2626', fontWeight: '600', fontSize: '0.85rem', border: 'none' }}>{st.active}</td>
-                    <td style={{ padding: '8px 12px', textAlign: 'center', color: '#16a34a', fontWeight: '600', fontSize: '0.85rem', border: 'none' }}>{st.resolved}</td>
-                    <td style={{ padding: '8px 12px', textAlign: 'center', border: 'none' }}>
-                      <span className="pill status-pill" style={{ background: '#eff6ff', color: '#2563eb', fontSize: '0.72rem', padding: '2px 6px', minWidth: 'auto' }}>{st.rate}%</span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div style={{ flex: '1 1 auto', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', minHeight: '180px', padding: '4px' }}>
+          {statesList.length === 0 ? (
+            <p className="muted" style={{ padding: '20px', gridColumn: '1 / -1', textAlign: 'center' }}>No state data found.</p>
+          ) : (
+            statesList.map((st) => {
+              const isActive = st.name === selectedState;
+              const barColor = '#16a34a';
+              
+              return (
+                <div 
+                  key={st.name} 
+                  onClick={() => setSelectedState(isActive ? null : st.name)}
+                  className={`monitor-card ${isActive ? 'active' : ''}`}
+                  style={{
+                    border: isActive ? '2px solid var(--color-primary)' : '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '14px',
+                    background: '#ffffff',
+                    cursor: 'pointer',
+                    boxShadow: isActive ? 'var(--shadow-md)' : 'var(--shadow-sm)',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: '10px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: '700', fontSize: '0.9rem', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{st.name}</span>
+                    <span className="pill" style={{ background: '#f1f5f9', color: '#64748b', fontSize: '0.7rem', padding: '2px 6px', fontWeight: 'bold' }}>{st.total} Total</span>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '16px', fontSize: '0.8rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ color: '#dc2626', fontWeight: '700', fontSize: '1rem' }}>{st.active}</span>
+                      <span style={{ fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase' }}>Active</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ color: '#16a34a', fontWeight: '700', fontSize: '1rem' }}>{st.resolved}</span>
+                      <span style={{ fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase' }}>Resolved</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', fontWeight: '600' }}>
+                      <span style={{ color: '#64748b' }}>Resolved Rate</span>
+                      <span style={{ color: barColor }}>{st.rate}%</span>
+                    </div>
+                    <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{ width: `${st.rate}%`, height: '100%', background: barColor, borderRadius: '3px', transition: 'width 0.3s ease' }}></div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
 
         {selectedState && (
           <div style={{ borderTop: '2px solid #e2e8f0', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <h3 style={{ fontSize: '0.9rem', margin: 0, color: '#1e3a8a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>📍 {selectedState} Drill-Down</span>
+              <span>📍 {selectedState} Department Drill-Down</span>
               <button 
                 type="button" 
                 style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.78rem', cursor: 'pointer', fontWeight: 'bold' }}
@@ -250,31 +266,53 @@ function ExecutiveMonitor({ user, complaints }) {
                 Clear Selection
               </button>
             </h3>
-            <div style={{ maxHeight: '160px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-              <table style={{ margin: 0, borderCollapse: 'collapse', width: '100%' }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    <th style={{ padding: '6px 10px', fontSize: '0.72rem', textAlign: 'left', border: 'none' }}>Dept</th>
-                    <th style={{ padding: '6px 10px', fontSize: '0.72rem', textAlign: 'center', border: 'none' }}>Total</th>
-                    <th style={{ padding: '6px 10px', fontSize: '0.72rem', textAlign: 'center', border: 'none' }}>Active</th>
-                    <th style={{ padding: '6px 10px', fontSize: '0.72rem', textAlign: 'center', border: 'none' }}>Resolved</th>
-                    <th style={{ padding: '6px 10px', fontSize: '0.72rem', textAlign: 'center', border: 'none' }}>Rate</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {drillDownList.map((dp) => (
-                    <tr key={dp.name} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '6px 10px', fontSize: '0.8rem', fontWeight: '500', border: 'none' }}>{dp.name}</td>
-                      <td style={{ padding: '6px 10px', fontSize: '0.8rem', textAlign: 'center', border: 'none' }}>{dp.total}</td>
-                      <td style={{ padding: '6px 10px', fontSize: '0.8rem', textAlign: 'center', color: '#dc2626', fontWeight: '600', border: 'none' }}>{dp.active}</td>
-                      <td style={{ padding: '6px 10px', fontSize: '0.8rem', textAlign: 'center', color: '#16a34a', fontWeight: '600', border: 'none' }}>{dp.resolved}</td>
-                      <td style={{ padding: '6px 10px', fontSize: '0.8rem', textAlign: 'center', border: 'none' }}>
-                        <span className="pill status-pill" style={{ background: '#f0fdf4', color: '#15803d', fontSize: '0.7rem', padding: '2px 5px', minWidth: 'auto' }}>{dp.rate}%</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', maxHeight: '200px', overflowY: 'auto', padding: '4px' }}>
+              {drillDownList.map((dp) => {
+                const barColor = '#16a34a';
+                
+                return (
+                  <div 
+                    key={dp.name}
+                    className="monitor-card"
+                    style={{
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '12px',
+                      padding: '12px',
+                      background: '#ffffff',
+                      boxShadow: 'var(--shadow-sm)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: '700', fontSize: '0.85rem', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dp.name}</span>
+                      <span className="pill" style={{ background: '#f1f5f9', color: '#64748b', fontSize: '0.68rem', padding: '2px 5px', fontWeight: 'bold' }}>{dp.total} Total</span>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '14px', fontSize: '0.75rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ color: '#dc2626', fontWeight: '700', fontSize: '0.9rem' }}>{dp.active}</span>
+                        <span style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Active</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ color: '#16a34a', fontWeight: '700', fontSize: '0.9rem' }}>{dp.resolved}</span>
+                        <span style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Resolved</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', fontWeight: '600' }}>
+                        <span style={{ color: '#64748b' }}>Rate</span>
+                        <span style={{ color: barColor }}>{dp.rate}%</span>
+                      </div>
+                      <div style={{ height: '4px', background: '#f1f5f9', borderRadius: '2px', overflow: 'hidden' }}>
+                        <div style={{ width: `${dp.rate}%`, height: '100%', background: barColor, borderRadius: '2px', transition: 'width 0.3s ease' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -311,37 +349,59 @@ function ExecutiveMonitor({ user, complaints }) {
         <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
           Administrative performance monitoring for departments within <strong>{userState}</strong>.
         </p>
-        <div style={{ flex: '1 1 auto', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '260px' }}>
-          <table style={{ margin: 0, borderCollapse: 'collapse', width: '100%' }}>
-            <thead>
-              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'left', fontWeight: 'bold', border: 'none' }}>Department</th>
-                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold', border: 'none' }}>Total</th>
-                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold', border: 'none' }}>Active</th>
-                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold', border: 'none' }}>Resolved</th>
-                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold', border: 'none' }}>Rate</th>
-              </tr>
-            </thead>
-            <tbody>
-              {deptsList.length === 0 ? (
-                <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '12px', fontSize: '0.85rem' }}>No department data found.</td>
-                </tr>
-              ) : (
-                deptsList.map((dp) => (
-                  <tr key={dp.name} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: '600', fontSize: '0.85rem', border: 'none' }}>{dp.name}</td>
-                    <td style={{ padding: '8px 12px', textAlign: 'center', fontSize: '0.85rem', border: 'none' }}>{dp.total}</td>
-                    <td style={{ padding: '8px 12px', textAlign: 'center', color: '#dc2626', fontWeight: '600', fontSize: '0.85rem', border: 'none' }}>{dp.active}</td>
-                    <td style={{ padding: '8px 12px', textAlign: 'center', color: '#16a34a', fontWeight: '600', fontSize: '0.85rem', border: 'none' }}>{dp.resolved}</td>
-                    <td style={{ padding: '8px 12px', textAlign: 'center', border: 'none' }}>
-                      <span className="pill status-pill" style={{ background: '#f0fdf4', color: '#15803d', fontSize: '0.72rem', padding: '2px 6px', minWidth: 'auto' }}>{dp.rate}%</span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div style={{ flex: '1 1 auto', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', minHeight: '260px', padding: '4px' }}>
+          {deptsList.length === 0 ? (
+            <p className="muted" style={{ padding: '20px', gridColumn: '1 / -1', textAlign: 'center' }}>No department data found.</p>
+          ) : (
+            deptsList.map((dp) => {
+              const barColor = '#16a34a';
+              
+              return (
+                <div 
+                  key={dp.name} 
+                  className="monitor-card"
+                  style={{
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '14px',
+                    background: '#ffffff',
+                    boxShadow: 'var(--shadow-sm)',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: '10px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: '700', fontSize: '0.9rem', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dp.name}</span>
+                    <span className="pill" style={{ background: '#f1f5f9', color: '#64748b', fontSize: '0.7rem', padding: '2px 6px', fontWeight: 'bold' }}>{dp.total} Total</span>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '16px', fontSize: '0.8rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ color: '#dc2626', fontWeight: '700', fontSize: '1rem' }}>{dp.active}</span>
+                      <span style={{ fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase' }}>Active</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ color: '#16a34a', fontWeight: '700', fontSize: '1rem' }}>{dp.resolved}</span>
+                      <span style={{ fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase' }}>Resolved</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', fontWeight: '600' }}>
+                      <span style={{ color: '#64748b' }}>Resolved Rate</span>
+                      <span style={{ color: barColor }}>{dp.rate}%</span>
+                    </div>
+                    <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{ width: `${dp.rate}%`, height: '100%', background: barColor, borderRadius: '3px', transition: 'width 0.3s ease' }}></div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     );
