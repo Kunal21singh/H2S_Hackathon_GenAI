@@ -6,6 +6,8 @@ import {
   BarChart3,
   Bell,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Compass,
   LogOut,
   MapPin,
@@ -16,6 +18,7 @@ import {
   Upload,
   UserPlus,
   Waves,
+  X,
 } from 'lucide-react';
 import './styles.css';
 
@@ -127,13 +130,222 @@ function HotspotMap({ hotspots }) {
       ref={mapRef} 
       style={{ 
         width: '100%', 
-        height: '290px', 
+        height: '600px', 
         borderRadius: '8px', 
         border: '1px solid #cbd8d5',
         marginTop: '10px'
       }} 
     />
   );
+}
+
+function ExecutiveMonitor({ user, complaints }) {
+  const [selectedState, setSelectedState] = React.useState(null);
+
+  const isPM = user.user_type === 'Prime Minister';
+  
+  if (isPM) {
+    const stateStats = {};
+    complaints.forEach((c) => {
+      const stateName = c.state ? c.state.trim() : 'Unknown';
+      if (!stateStats[stateName]) {
+        stateStats[stateName] = { total: 0, active: 0, resolved: 0 };
+      }
+      stateStats[stateName].total += 1;
+      if (c.status === 'resolved') {
+        stateStats[stateName].resolved += 1;
+      } else {
+        stateStats[stateName].active += 1;
+      }
+    });
+
+    const statesList = Object.entries(stateStats).map(([name, stats]) => ({
+      name,
+      ...stats,
+      rate: stats.total > 0 ? ((stats.resolved / stats.total) * 100).toFixed(0) : '0',
+    })).sort((a, b) => b.total - a.total);
+
+    let drillDownList = [];
+    if (selectedState) {
+      const deptStats = {};
+      complaints.filter(c => (c.state ? c.state.trim() : 'Unknown') === selectedState).forEach((c) => {
+        const dept = c.classification?.department || 'Unassigned';
+        if (!deptStats[dept]) {
+          deptStats[dept] = { total: 0, active: 0, resolved: 0 };
+        }
+        deptStats[dept].total += 1;
+        if (c.status === 'resolved') {
+          deptStats[dept].resolved += 1;
+        } else {
+          deptStats[dept].active += 1;
+        }
+      });
+      drillDownList = Object.entries(deptStats).map(([name, stats]) => ({
+        name,
+        ...stats,
+        rate: stats.total > 0 ? ((stats.resolved / stats.total) * 100).toFixed(0) : '0',
+      })).sort((a, b) => b.total - a.total);
+    }
+
+    return (
+      <div className="panel executive-monitor" style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '14px' }}>
+        <div className="panelTitle" style={{ marginBottom: '8px' }}>
+          <Activity size={18} />
+          <h2>National Executive Monitor (PM)</h2>
+        </div>
+        <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
+          Click a state below to view department-level grievance performance.
+        </p>
+        <div style={{ flex: '1 1 auto', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '180px' }}>
+          <table style={{ margin: 0, borderCollapse: 'collapse', width: '100%' }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'left', fontWeight: 'bold', border: 'none' }}>State</th>
+                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold', border: 'none' }}>Total</th>
+                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold', border: 'none' }}>Active</th>
+                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold', border: 'none' }}>Resolved</th>
+                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold', border: 'none' }}>Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {statesList.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '12px', fontSize: '0.85rem' }}>No state data found.</td>
+                </tr>
+              ) : (
+                statesList.map((st) => (
+                  <tr 
+                    key={st.name} 
+                    onClick={() => setSelectedState(st.name === selectedState ? null : st.name)}
+                    style={{ 
+                      cursor: 'pointer', 
+                      background: st.name === selectedState ? '#eff6ff' : 'transparent',
+                      borderBottom: '1px solid #f1f5f9',
+                      transition: 'background-color 0.15s ease'
+                    }}
+                  >
+                    <td style={{ padding: '8px 12px', fontWeight: '600', fontSize: '0.85rem', border: 'none' }}>{st.name}</td>
+                    <td style={{ padding: '8px 12px', textAlign: 'center', fontSize: '0.85rem', border: 'none' }}>{st.total}</td>
+                    <td style={{ padding: '8px 12px', textAlign: 'center', color: '#dc2626', fontWeight: '600', fontSize: '0.85rem', border: 'none' }}>{st.active}</td>
+                    <td style={{ padding: '8px 12px', textAlign: 'center', color: '#16a34a', fontWeight: '600', fontSize: '0.85rem', border: 'none' }}>{st.resolved}</td>
+                    <td style={{ padding: '8px 12px', textAlign: 'center', border: 'none' }}>
+                      <span className="pill status-pill" style={{ background: '#eff6ff', color: '#2563eb', fontSize: '0.72rem', padding: '2px 6px', minWidth: 'auto' }}>{st.rate}%</span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {selectedState && (
+          <div style={{ borderTop: '2px solid #e2e8f0', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <h3 style={{ fontSize: '0.9rem', margin: 0, color: '#1e3a8a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>📍 {selectedState} Drill-Down</span>
+              <button 
+                type="button" 
+                style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.78rem', cursor: 'pointer', fontWeight: 'bold' }}
+                onClick={() => setSelectedState(null)}
+              >
+                Clear Selection
+              </button>
+            </h3>
+            <div style={{ maxHeight: '160px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+              <table style={{ margin: 0, borderCollapse: 'collapse', width: '100%' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <th style={{ padding: '6px 10px', fontSize: '0.72rem', textAlign: 'left', border: 'none' }}>Dept</th>
+                    <th style={{ padding: '6px 10px', fontSize: '0.72rem', textAlign: 'center', border: 'none' }}>Total</th>
+                    <th style={{ padding: '6px 10px', fontSize: '0.72rem', textAlign: 'center', border: 'none' }}>Active</th>
+                    <th style={{ padding: '6px 10px', fontSize: '0.72rem', textAlign: 'center', border: 'none' }}>Resolved</th>
+                    <th style={{ padding: '6px 10px', fontSize: '0.72rem', textAlign: 'center', border: 'none' }}>Rate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {drillDownList.map((dp) => (
+                    <tr key={dp.name} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '6px 10px', fontSize: '0.8rem', fontWeight: '500', border: 'none' }}>{dp.name}</td>
+                      <td style={{ padding: '6px 10px', fontSize: '0.8rem', textAlign: 'center', border: 'none' }}>{dp.total}</td>
+                      <td style={{ padding: '6px 10px', fontSize: '0.8rem', textAlign: 'center', color: '#dc2626', fontWeight: '600', border: 'none' }}>{dp.active}</td>
+                      <td style={{ padding: '6px 10px', fontSize: '0.8rem', textAlign: 'center', color: '#16a34a', fontWeight: '600', border: 'none' }}>{dp.resolved}</td>
+                      <td style={{ padding: '6px 10px', fontSize: '0.8rem', textAlign: 'center', border: 'none' }}>
+                        <span className="pill status-pill" style={{ background: '#f0fdf4', color: '#15803d', fontSize: '0.7rem', padding: '2px 5px', minWidth: 'auto' }}>{dp.rate}%</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  } else {
+    const userState = user.state || 'Unknown';
+    const deptStats = {};
+    complaints.forEach((c) => {
+      const dept = c.classification?.department || 'Unassigned';
+      if (!deptStats[dept]) {
+        deptStats[dept] = { total: 0, active: 0, resolved: 0 };
+      }
+      deptStats[dept].total += 1;
+      if (c.status === 'resolved') {
+        deptStats[dept].resolved += 1;
+      } else {
+        deptStats[dept].active += 1;
+      }
+    });
+
+    const deptsList = Object.entries(deptStats).map(([name, stats]) => ({
+      name,
+      ...stats,
+      rate: stats.total > 0 ? ((stats.resolved / stats.total) * 100).toFixed(0) : '0',
+    })).sort((a, b) => b.total - a.total);
+
+    return (
+      <div className="panel executive-monitor" style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '14px' }}>
+        <div className="panelTitle" style={{ marginBottom: '8px' }}>
+          <Activity size={18} />
+          <h2>State Executive Monitor ({userState})</h2>
+        </div>
+        <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
+          Administrative performance monitoring for departments within <strong>{userState}</strong>.
+        </p>
+        <div style={{ flex: '1 1 auto', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '260px' }}>
+          <table style={{ margin: 0, borderCollapse: 'collapse', width: '100%' }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'left', fontWeight: 'bold', border: 'none' }}>Department</th>
+                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold', border: 'none' }}>Total</th>
+                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold', border: 'none' }}>Active</th>
+                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold', border: 'none' }}>Resolved</th>
+                <th style={{ padding: '8px 12px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold', border: 'none' }}>Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {deptsList.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '12px', fontSize: '0.85rem' }}>No department data found.</td>
+                </tr>
+              ) : (
+                deptsList.map((dp) => (
+                  <tr key={dp.name} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: '600', fontSize: '0.85rem', border: 'none' }}>{dp.name}</td>
+                    <td style={{ padding: '8px 12px', textAlign: 'center', fontSize: '0.85rem', border: 'none' }}>{dp.total}</td>
+                    <td style={{ padding: '8px 12px', textAlign: 'center', color: '#dc2626', fontWeight: '600', fontSize: '0.85rem', border: 'none' }}>{dp.active}</td>
+                    <td style={{ padding: '8px 12px', textAlign: 'center', color: '#16a34a', fontWeight: '600', fontSize: '0.85rem', border: 'none' }}>{dp.resolved}</td>
+                    <td style={{ padding: '8px 12px', textAlign: 'center', border: 'none' }}>
+                      <span className="pill status-pill" style={{ background: '#f0fdf4', color: '#15803d', fontSize: '0.72rem', padding: '2px 6px', minWidth: 'auto' }}>{dp.rate}%</span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
 }
 
 function App() {
@@ -148,6 +360,7 @@ function App() {
     full_name: '',
     phone: '',
     user_type: 'Citizen',
+    state: '',
   });
   const [complaints, setComplaints] = useState([]);
   const [hotspots, setHotspots] = useState([]);
@@ -167,11 +380,13 @@ function App() {
   const [resolvingId, setResolvingId] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showAnalyticsPopup, setShowAnalyticsPopup] = useState(false);
+  const [liveQueueCollapsed, setLiveQueueCollapsed] = useState(false);
+  const [archiveQueueCollapsed, setArchiveQueueCollapsed] = useState(false);
 
   const [detectingLocation, setDetectingLocation] = useState(false);
   const [locationStatus, setLocationStatus] = useState('idle'); // 'idle' | 'success' | 'error' | 'manually_edited'
   const [locationError, setLocationError] = useState('');
-  const [hotspotViewMode, setHotspotViewMode] = useState('list'); // 'list' | 'map'
 
   const detectLocation = () => {
     if (!navigator.geolocation) {
@@ -556,445 +771,482 @@ function App() {
       {notice && <div className={`notice ${notice.type}`}>{notice.text}</div>}
 
       <section className="workspace">
-        <form className="panel intake" onSubmit={submitComplaint}>
-          <div className="panelTitle">
-            <Send size={18} />
-            <h2>Citizen Intake</h2>
-          </div>
-          <label>
-            Complaint
-            <textarea value={form.text} onChange={(event) => setForm({ ...form, text: event.target.value })} />
-          </label>
-          <div className="split">
-            <label>
-              Place
-              <input 
-                value={form.place || ''} 
-                onChange={(event) => setForm({ ...form, place: event.target.value })} 
-                onBlur={() => {
-                  if (locationStatus === 'idle' || locationStatus === 'error') {
-                    geocodeAddress(form.place, form.state);
-                  }
-                }}
-              />
-            </label>
-            <label>
-              State
-              <input 
-                value={form.state || ''} 
-                onChange={(event) => setForm({ ...form, state: event.target.value })} 
-                onBlur={() => {
-                  if (locationStatus === 'idle' || locationStatus === 'error') {
-                    geocodeAddress(form.place, form.state);
-                  }
-                }}
-              />
-            </label>
-          </div>
-          <label>
-            Notify phone
-            <input value={session.user.phone} readOnly />
-          </label>
-          <div className="location-row-container">
-            <div className="location-header">
-              <span className="location-title">GPS Location</span>
-              <button
-                type="button"
-                className={`location-detect-btn ${detectingLocation ? 'loading' : ''} ${locationStatus === 'success' ? 'success' : ''}`}
-                onClick={detectLocation}
-                disabled={detectingLocation}
-              >
-                {detectingLocation ? (
-                  <RefreshCw className="spin" size={14} />
-                ) : (
-                  <Compass size={14} />
-                )}
-                {detectingLocation ? 'Accessing GPS...' : locationStatus === 'success' ? 'GPS Locked' : 'Use Device GPS'}
-              </button>
-            </div>
-            
-            {locationStatus === 'success' && (
-              <div className="location-status-badge success-badge">
-                <Compass size={14} className="pulse-icon" />
-                <span>Device GPS active and location locked.</span>
-              </div>
-            )}
-            {locationStatus === 'error' && (
-              <div className="location-status-badge error-badge">
-                <span>⚠️ {locationError}</span>
-                <button type="button" className="location-text-btn" onClick={detectLocation}>Retry</button>
-              </div>
-            )}
-          </div>
-          <label>
-            Voice transcript
-            <input
-              value={form.voice_transcript}
-              onChange={(event) => setForm({ ...form, voice_transcript: event.target.value })}
-              placeholder="Optional speech-to-text transcript"
-            />
-          </label>
-          <label className="fileInput">
-            <Upload size={18} />
-            <span>Attach photo</span>
-            <input name="photo" type="file" accept="image/*" />
-          </label>
-          <button className="primary" disabled={loading}>
-            <Send size={18} />
-            Submit and classify
-          </button>
-        </form>
-
-        <section className="panel">
-          <div className="panelTitle" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <MapPin size={18} />
-              <h2>Hotspots</h2>
-            </div>
-            <div className="map-view-toggle">
-              <button 
-                type="button" 
-                className={hotspotViewMode === 'list' ? 'active' : ''} 
-                onClick={() => setHotspotViewMode('list')}
-              >
-                List
-              </button>
-              <button 
-                type="button" 
-                className={hotspotViewMode === 'map' ? 'active' : ''} 
-                onClick={() => setHotspotViewMode('map')}
-              >
-                Map
-              </button>
-            </div>
-          </div>
-          {hotspotViewMode === 'list' ? (
-            <div className="hotspotList">
-              {hotspots.length === 0 && <p className="muted">No hotspots yet.</p>}
-              {hotspots.map((hotspot) => (
-                <article className="hotspot" key={`${hotspot.place}-${hotspot.category}`}>
-                  <div>
-                    <strong>{hotspot.place}</strong>
-                    <span>{hotspot.category.replace('_', ' ')}</span>
-                  </div>
-                  <div className={`pill ${hotspot.priority}`}>{hotspot.priority}</div>
-                  <b>{hotspot.count}</b>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <HotspotMap hotspots={hotspots} />
-          )}
-        </section>
-
-        <section className="panel analytics">
-          <div className="panelTitle">
-            <BarChart3 size={18} />
-            <h2>Conversational Analytics</h2>
-          </div>
-          <form onSubmit={askQuestion} className="ask">
-            <input value={question} onChange={(event) => setQuestion(event.target.value)} />
-            <button className="iconButton" disabled={loading} title="Ask analytics question">
+        {['Chief Minister', 'Prime Minister'].includes(session.user.user_type) ? (
+          <ExecutiveMonitor user={session.user} complaints={complaints} />
+        ) : (
+          <form className="panel intake" onSubmit={submitComplaint}>
+            <div className="panelTitle">
               <Send size={18} />
-            </button>
-          </form>
-          {analytics && (
-            <div className="answer">
-              <p>{analytics.answer}</p>
-              <small>{analytics.source}</small>
-              {analytics.rows.length > 0 && (
-                <table>
-                  <tbody>
-                    {analytics.rows.map((row, index) => (
-                      <tr key={index}>
-                        {Object.values(row).map((value, cellIndex) => (
-                          <td key={cellIndex}>{String(value)}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <h2>Citizen Intake</h2>
+            </div>
+            <label>
+              Complaint
+              <textarea value={form.text} onChange={(event) => setForm({ ...form, text: event.target.value })} />
+            </label>
+            <div className="split">
+              <label>
+                Place
+                <input 
+                  value={form.place || ''} 
+                  onChange={(event) => setForm({ ...form, place: event.target.value })} 
+                  onBlur={() => {
+                    if (locationStatus === 'idle' || locationStatus === 'error') {
+                      geocodeAddress(form.place, form.state);
+                    }
+                  }}
+                />
+              </label>
+              <label>
+                State
+                <input 
+                  value={form.state || ''} 
+                  onChange={(event) => setForm({ ...form, state: event.target.value })} 
+                  onBlur={() => {
+                    if (locationStatus === 'idle' || locationStatus === 'error') {
+                      geocodeAddress(form.place, form.state);
+                    }
+                  }}
+                />
+              </label>
+            </div>
+            <label>
+              Notify phone
+              <input value={session.user.phone} readOnly />
+            </label>
+            <div className="location-row-container">
+              <div className="location-header">
+                <span className="location-title">GPS Location</span>
+                <button
+                  type="button"
+                  className={`location-detect-btn ${detectingLocation ? 'loading' : ''} ${locationStatus === 'success' ? 'success' : ''}`}
+                  onClick={detectLocation}
+                  disabled={detectingLocation}
+                >
+                  {detectingLocation ? (
+                    <RefreshCw className="spin" size={14} />
+                  ) : (
+                    <Compass size={14} />
+                  )}
+                  {detectingLocation ? 'Accessing GPS...' : locationStatus === 'success' ? 'GPS Locked' : 'Use Device GPS'}
+                </button>
+              </div>
+              
+              {locationStatus === 'success' && (
+                <div className="location-status-badge success-badge">
+                  <Compass size={14} className="pulse-icon" />
+                  <span>Device GPS active and location locked.</span>
+                </div>
+              )}
+              {locationStatus === 'error' && (
+                <div className="location-status-badge error-badge">
+                  <span>⚠️ {locationError}</span>
+                  <button type="button" className="location-text-btn" onClick={detectLocation}>Retry</button>
+                </div>
               )}
             </div>
-          )}
+            <label>
+              Voice transcript
+              <input
+                value={form.voice_transcript}
+                onChange={(event) => setForm({ ...form, voice_transcript: event.target.value })}
+                placeholder="Optional speech-to-text transcript"
+              />
+            </label>
+            <label className="fileInput">
+              <Upload size={18} />
+              <span>Attach photo</span>
+              <input name="photo" type="file" accept="image/*" />
+            </label>
+            <button className="primary" disabled={loading}>
+              <Send size={18} />
+              Submit and classify
+            </button>
+          </form>
+        )}
+
+        <section className="panel">
+          <div className="panelTitle" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <MapPin size={18} />
+            <h2>Hotspots Map</h2>
+          </div>
+          <HotspotMap hotspots={hotspots} />
         </section>
+
       </section>
 
-      <section className="panel queue">
-        <div className="panelTitle">
-          <Waves size={18} />
-          <h2>Live Complaint Queue</h2>
-        </div>
-        <div className="table">
-          {complaints.filter((complaint) => complaint.status !== 'resolved').map((complaint) => {
-            const isExpanded = expandedComplaintId === complaint.id;
-            return (
-              <React.Fragment key={complaint.id}>
-                <article 
-                  className={`row ${isExpanded ? 'expanded-row' : ''}`} 
-                  onClick={() => setExpandedComplaintId(isExpanded ? null : complaint.id)}
-                  style={{ cursor: 'pointer', transition: 'background-color 0.2s ease' }}
-                >
-                  <div>
-                    <strong>{complaint.classification.summary}</strong>
-                    <span>
-                      {complaint.place}{complaint.state ? `, ${complaint.state}` : ''} / {complaint.classification.department} / {complaint.reporter_username || 'citizen'}
-                    </span>
-                  </div>
-                  <span style={{ textTransform: 'capitalize' }}>{complaint.classification.category.replace('_', ' ')}</span>
-                  <span className={`pill ${complaint.classification.priority}`}>{complaint.classification.priority}</span>
-                  <span className={`pill status-pill ${complaint.status}`}>{complaint.duplicate_of ? `Duplicate of ${complaint.duplicate_of}` : complaint.status}</span>
-                </article>
-                
-                {isExpanded && (
-                  <div className="complaint-detail-expansion" style={{
-                    padding: '20px',
-                    background: '#f8fafc',
-                    borderLeft: '4px solid #246bfe',
-                    borderBottom: '1px solid #cbd8d5',
-                    borderRight: '1px solid #cbd8d5',
-                    borderBottomLeftRadius: '8px',
-                    borderBottomRightRadius: '8px',
-                    marginTop: '-4px',
-                    marginBottom: '8px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '16px'
-                  }} onClick={(e) => e.stopPropagation()}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                      <div>
-                        <h4 style={{ margin: '0 0 6px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Full Grievance Text</h4>
-                        <p style={{ margin: 0, fontSize: '0.95rem', color: '#17202a', whiteSpace: 'pre-wrap' }}>{complaint.text}</p>
-                        
-                        {complaint.voice_transcript && (
-                          <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eef2f6', borderRadius: '8px', borderLeft: '3px solid #64748b' }}>
-                            <h5 style={{ margin: '0 0 4px', fontSize: '0.8rem', color: '#475569' }}>🎙️ Voice Transcript</h5>
-                            <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155', fontStyle: 'italic' }}>"{complaint.voice_transcript}"</p>
-                          </div>
-                        )}
+      <div className="queues-container">
+        <section className="panel queue">
+          <div 
+            className="panelTitle collapsible-header" 
+            onClick={() => setLiveQueueCollapsed(!liveQueueCollapsed)}
+            style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Waves size={18} />
+              <h2>Live Complaint Queue ({complaints.filter((c) => c.status !== 'resolved').length})</h2>
+            </div>
+            {liveQueueCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
+          </div>
+          
+          {!liveQueueCollapsed && (
+            <div className="table">
+              {complaints.filter((complaint) => complaint.status !== 'resolved').length === 0 && (
+                <p className="muted" style={{ padding: '20px', textAlign: 'center' }}>No live complaints yet.</p>
+              )}
+              {complaints.filter((complaint) => complaint.status !== 'resolved').map((complaint) => {
+                const isExpanded = expandedComplaintId === complaint.id;
+                return (
+                  <React.Fragment key={complaint.id}>
+                    <article 
+                      className={`row ${isExpanded ? 'expanded-row' : ''}`} 
+                      onClick={() => setExpandedComplaintId(isExpanded ? null : complaint.id)}
+                      style={{ cursor: 'pointer', transition: 'background-color 0.2s ease' }}
+                    >
+                      <div className="rowMainInfo">
+                        <strong>{complaint.classification.summary}</strong>
+                        <span className="rowSubtitle">
+                          {complaint.place}{complaint.state ? `, ${complaint.state}` : ''} / {complaint.classification.department} / {complaint.reporter_username || 'citizen'}
+                        </span>
                       </div>
-                      
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <div>
-                          <h4 style={{ margin: '0 0 4px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Reporter Details</h4>
-                          <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Name:</strong> {complaint.reporter_name || 'Anonymous'} ({complaint.reporter_username || 'citizen'})</span>
-                          {complaint.contact && <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Contact:</strong> {complaint.contact}</span>}
-                          <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Date Filed:</strong> {new Date(complaint.created_at).toLocaleString()}</span>
+                      <div className="rowBadges">
+                        <span className={`pill ${complaint.classification.priority}`}>{complaint.classification.priority}</span>
+                        <span className={`pill status-pill ${complaint.status}`}>{complaint.duplicate_of ? `Duplicate of ${complaint.duplicate_of}` : complaint.status}</span>
+                      </div>
+                    </article>
+                    
+                    {isExpanded && (
+                      <div className="complaint-detail-expansion" style={{
+                        padding: '20px',
+                        background: '#f8fafc',
+                        borderLeft: '4px solid #246bfe',
+                        borderBottom: '1px solid #cbd8d5',
+                        borderRight: '1px solid #cbd8d5',
+                        borderBottomLeftRadius: '8px',
+                        borderBottomRightRadius: '8px',
+                        marginTop: '-4px',
+                        marginBottom: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '16px'
+                      }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                          <div>
+                            <h4 style={{ margin: '0 0 6px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Full Grievance Text</h4>
+                            <p style={{ margin: 0, fontSize: '0.95rem', color: '#17202a', whiteSpace: 'pre-wrap' }}>{complaint.text}</p>
+                            
+                            {complaint.voice_transcript && (
+                              <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eef2f6', borderRadius: '8px', borderLeft: '3px solid #64748b' }}>
+                                <h5 style={{ margin: '0 0 4px', fontSize: '0.8rem', color: '#475569' }}>🎙️ Voice Transcript</h5>
+                                <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155', fontStyle: 'italic' }}>"{complaint.voice_transcript}"</p>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+                            <div>
+                              <h4 style={{ margin: '0 0 4px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Reporter Details</h4>
+                              <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Name:</strong> {complaint.reporter_name || 'Anonymous'} ({complaint.reporter_username || 'citizen'})</span>
+                              {complaint.contact && <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Contact:</strong> {complaint.contact}</span>}
+                              <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Date Filed:</strong> {new Date(complaint.created_at).toLocaleString()}</span>
+                            </div>
+                            
+                            <div>
+                              <h4 style={{ margin: '0 0 4px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>AI Classification Info</h4>
+                              <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Assigned Department:</strong> {complaint.classification.department}</span>
+                              <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>AI Confidence:</strong> {(complaint.classification.confidence * 100).toFixed(0)}%</span>
+                              {complaint.classification.tags && complaint.classification.tags.length > 0 && (
+                                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '6px' }}>
+                                  {complaint.classification.tags.map(tag => (
+                                    <span key={tag} style={{ padding: '2px 6px', background: '#e2e8f0', borderRadius: '4px', fontSize: '0.75rem', color: '#475569' }}>#{tag}</span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        
-                        <div>
-                          <h4 style={{ margin: '0 0 4px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>AI Classification Info</h4>
-                          <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Assigned Department:</strong> {complaint.classification.department}</span>
-                          <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>AI Confidence:</strong> {(complaint.classification.confidence * 100).toFixed(0)}%</span>
-                          {complaint.classification.tags && complaint.classification.tags.length > 0 && (
-                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '6px' }}>
-                              {complaint.classification.tags.map(tag => (
-                                <span key={tag} style={{ padding: '2px 6px', background: '#e2e8f0', borderRadius: '4px', fontSize: '0.75rem', color: '#475569' }}>#{tag}</span>
-                              ))}
+
+                        <div style={{ display: 'grid', gridTemplateColumns: complaint.photo_filename || complaint.resolution_photo_filename ? '1fr 1fr' : '1fr', gap: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                          {complaint.photo_filename && (
+                            <div>
+                              <h4 style={{ margin: '0 0 8px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Original Evidence Photo</h4>
+                              <a href={`${API_BASE}/uploads/${complaint.photo_filename}`} target="_blank" rel="noreferrer">
+                                <img 
+                                  src={`${API_BASE}/uploads/${complaint.photo_filename}`} 
+                                  alt="Evidence Photo" 
+                                  style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px', border: '1px solid #cbd8d5', objectFit: 'cover' }} 
+                                />
+                              </a>
+                            </div>
+                          )}
+                          
+                          {complaint.status === 'resolved' && (
+                            <div>
+                              <h4 style={{ margin: '0 0 8px', color: '#174b2a', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <CheckCircle2 size={16} color="#174b2a" /> Resolution Proof
+                              </h4>
+                              <div style={{ marginBottom: '8px', fontSize: '0.85rem', color: '#334155' }}>
+                                Completed by <strong>@{complaint.completed_by}</strong> on {complaint.completed_at ? new Date(complaint.completed_at).toLocaleString() : 'N/A'}
+                              </div>
+                              {complaint.resolution_photo_filename && (
+                                <a href={`${API_BASE}/uploads/${complaint.resolution_photo_filename}`} target="_blank" rel="noreferrer">
+                                  <img 
+                                    src={`${API_BASE}/uploads/${complaint.resolution_photo_filename}`} 
+                                    alt="Resolution Proof" 
+                                    style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px', border: '1px solid #9edab4', objectFit: 'cover' }} 
+                                  />
+                                </a>
+                              )}
+                            </div>
+                          )}
+
+                          {(session.user.user_type || 'Citizen') !== 'Citizen' && complaint.status !== 'resolved' && (
+                            <div style={{ background: '#f0fdf4', border: '1px dashed #86efac', borderRadius: '8px', padding: '16px' }}>
+                              <h4 style={{ margin: '0 0 8px', color: '#166534', fontSize: '0.9rem', fontWeight: 'bold' }}>Action Required: Resolve</h4>
+                              <form onSubmit={(e) => resolveComplaint(e, complaint.id)} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <label style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }}>
+                                  <span>Attach Repair Photo Proof:</span>
+                                  <input 
+                                    name="resolution_photo" 
+                                    type="file" 
+                                    accept="image/*" 
+                                    required 
+                                    style={{ fontSize: '0.85rem' }} 
+                                  />
+                                </label>
+                                <button 
+                                  type="submit" 
+                                  className="primary success-btn" 
+                                  disabled={resolvingId === complaint.id}
+                                  style={{ 
+                                    padding: '8px 12px', 
+                                    background: '#166534', 
+                                    color: '#ffffff', 
+                                    border: 'none', 
+                                    borderRadius: '6px', 
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '6px',
+                                    fontWeight: 'bold',
+                                    fontSize: '0.85rem'
+                                  }}
+                                >
+                                  {resolvingId === complaint.id ? (
+                                    <RefreshCw className="spin" size={14} />
+                                  ) : (
+                                    <CheckCircle2 size={14} />
+                                  )}
+                                  {resolvingId === complaint.id ? 'Saving Proof...' : 'Resolve Complaint'}
+                                </button>
+                              </form>
                             </div>
                           )}
                         </div>
                       </div>
-                    </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: complaint.photo_filename || complaint.resolution_photo_filename ? '1fr 1fr' : '1fr', gap: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
-                      {complaint.photo_filename && (
-                        <div>
-                          <h4 style={{ margin: '0 0 8px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Original Evidence Photo</h4>
-                          <a href={`${API_BASE}/uploads/${complaint.photo_filename}`} target="_blank" rel="noreferrer">
-                            <img 
-                              src={`${API_BASE}/uploads/${complaint.photo_filename}`} 
-                              alt="Evidence Photo" 
-                              style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px', border: '1px solid #cbd8d5', objectFit: 'cover' }} 
-                            />
-                          </a>
-                        </div>
-                      )}
-                      
-                      {complaint.status === 'resolved' && (
-                        <div>
-                          <h4 style={{ margin: '0 0 8px', color: '#174b2a', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <CheckCircle2 size={16} color="#174b2a" /> Resolution Proof
-                          </h4>
-                          <div style={{ marginBottom: '8px', fontSize: '0.85rem', color: '#334155' }}>
-                            Completed by <strong>@{complaint.completed_by}</strong> on {complaint.completed_at ? new Date(complaint.completed_at).toLocaleString() : 'N/A'}
+        <section className="panel queue archive-queue">
+          <div 
+            className="panelTitle collapsible-header" 
+            onClick={() => setArchiveQueueCollapsed(!archiveQueueCollapsed)}
+            style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckCircle2 size={18} />
+              <h2>Resolved Grievances Archive ({complaints.filter((c) => c.status === 'resolved').length})</h2>
+            </div>
+            {archiveQueueCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
+          </div>
+          
+          {!archiveQueueCollapsed && (
+            <div className="table">
+              {complaints.filter((complaint) => complaint.status === 'resolved').length === 0 && (
+                <p className="muted" style={{ padding: '20px', textAlign: 'center' }}>No resolved complaints yet.</p>
+              )}
+              {complaints.filter((complaint) => complaint.status === 'resolved').map((complaint) => {
+                const isExpanded = expandedComplaintId === complaint.id;
+                return (
+                  <React.Fragment key={complaint.id}>
+                    <article 
+                      className={`row resolved-row ${isExpanded ? 'expanded-row' : ''}`} 
+                      onClick={() => setExpandedComplaintId(isExpanded ? null : complaint.id)}
+                      style={{ cursor: 'pointer', transition: 'background-color 0.2s ease' }}
+                    >
+                      <div className="rowMainInfo">
+                        <strong>{complaint.classification.summary}</strong>
+                        <span className="rowSubtitle">
+                          {complaint.place}{complaint.state ? `, ${complaint.state}` : ''} / {complaint.classification.department} / {complaint.reporter_username || 'citizen'}
+                        </span>
+                      </div>
+                      <div className="rowBadges">
+                        <span className={`pill ${complaint.classification.priority}`}>{complaint.classification.priority}</span>
+                        <span className="pill status-pill resolved">Resolved</span>
+                      </div>
+                    </article>
+                    
+                    {isExpanded && (
+                      <div className="complaint-detail-expansion" style={{
+                        padding: '20px',
+                        background: '#f8fafc',
+                        borderLeft: '4px solid #10b981',
+                        borderBottom: '1px solid #cbd8d5',
+                        borderRight: '1px solid #cbd8d5',
+                        borderBottomLeftRadius: '8px',
+                        borderBottomRightRadius: '8px',
+                        marginTop: '-4px',
+                        marginBottom: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '16px'
+                      }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                          <div>
+                            <h4 style={{ margin: '0 0 6px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Full Grievance Text</h4>
+                            <p style={{ margin: 0, fontSize: '0.95rem', color: '#17202a', whiteSpace: 'pre-wrap' }}>{complaint.text}</p>
+                            
+                            {complaint.voice_transcript && (
+                              <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eef2f6', borderRadius: '8px', borderLeft: '3px solid #64748b' }}>
+                                <h5 style={{ margin: '0 0 4px', fontSize: '0.8rem', color: '#475569' }}>🎙️ Voice Transcript</h5>
+                                <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155', fontStyle: 'italic' }}>"{complaint.voice_transcript}"</p>
+                              </div>
+                            )}
                           </div>
+                          
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+                            <div>
+                              <h4 style={{ margin: '0 0 4px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Reporter Details</h4>
+                              <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Name:</strong> {complaint.reporter_name || 'Anonymous'} ({complaint.reporter_username || 'citizen'})</span>
+                              {complaint.contact && <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Contact:</strong> {complaint.contact}</span>}
+                              <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Date Filed:</strong> {new Date(complaint.created_at).toLocaleString()}</span>
+                            </div>
+                            
+                            <div>
+                              <h4 style={{ margin: '0 0 4px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>AI Classification Info</h4>
+                              <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Assigned Department:</strong> {complaint.classification.department}</span>
+                              <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>AI Confidence:</strong> {(complaint.classification.confidence * 100).toFixed(0)}%</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: complaint.photo_filename || complaint.resolution_photo_filename ? '1fr 1fr' : '1fr', gap: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                          {complaint.photo_filename && (
+                            <div>
+                              <h4 style={{ margin: '0 0 8px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Original Evidence Photo</h4>
+                              <a href={`${API_BASE}/uploads/${complaint.photo_filename}`} target="_blank" rel="noreferrer">
+                                <img 
+                                  src={`${API_BASE}/uploads/${complaint.photo_filename}`} 
+                                  alt="Evidence Photo" 
+                                  style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px', border: '1px solid #cbd8d5', objectFit: 'cover' }} 
+                                />
+                              </a>
+                            </div>
+                          )}
+                          
                           {complaint.resolution_photo_filename && (
-                            <a href={`${API_BASE}/uploads/${complaint.resolution_photo_filename}`} target="_blank" rel="noreferrer">
-                              <img 
-                                src={`${API_BASE}/uploads/${complaint.resolution_photo_filename}`} 
-                                alt="Resolution Proof" 
-                                style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px', border: '1px solid #9edab4', objectFit: 'cover' }} 
-                              />
-                            </a>
+                            <div>
+                              <h4 style={{ margin: '0 0 8px', color: '#174b2a', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <CheckCircle2 size={16} color="#174b2a" /> Resolution Proof
+                              </h4>
+                              <div style={{ marginBottom: '8px', fontSize: '0.85rem', color: '#334155' }}>
+                                Completed by <strong>@{complaint.completed_by}</strong> on {complaint.completed_at ? new Date(complaint.completed_at).toLocaleString() : 'N/A'}
+                              </div>
+                              <a href={`${API_BASE}/uploads/${complaint.resolution_photo_filename}`} target="_blank" rel="noreferrer">
+                                <img 
+                                  src={`${API_BASE}/uploads/${complaint.resolution_photo_filename}`} 
+                                  alt="Resolution Proof" 
+                                  style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px', border: '1px solid #9edab4', objectFit: 'cover' }} 
+                                />
+                              </a>
+                            </div>
                           )}
                         </div>
-                      )}
-
-                      {(session.user.user_type || 'Citizen') !== 'Citizen' && complaint.status !== 'resolved' && (
-                        <div style={{ background: '#f0fdf4', border: '1px dashed #86efac', borderRadius: '8px', padding: '16px' }}>
-                          <h4 style={{ margin: '0 0 8px', color: '#166534', fontSize: '0.9rem', fontWeight: 'bold' }}>Action Required: Resolve Grievance</h4>
-                          <form onSubmit={(e) => resolveComplaint(e, complaint.id)} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <label style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }}>
-                              <span>Attach Repair Photo Proof (Required):</span>
-                              <input 
-                                name="resolution_photo" 
-                                type="file" 
-                                accept="image/*" 
-                                required 
-                                style={{ fontSize: '0.85rem' }} 
-                              />
-                            </label>
-                            <button 
-                              type="submit" 
-                              className="primary success-btn" 
-                              disabled={resolvingId === complaint.id}
-                              style={{ 
-                                padding: '8px 12px', 
-                                background: '#166534', 
-                                color: '#ffffff', 
-                                border: 'none', 
-                                borderRadius: '6px', 
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '6px',
-                                fontWeight: 'bold',
-                                fontSize: '0.85rem'
-                              }}
-                            >
-                              {resolvingId === complaint.id ? (
-                                <RefreshCw className="spin" size={14} />
-                              ) : (
-                                <CheckCircle2 size={14} />
-                              )}
-                              {resolvingId === complaint.id ? 'Saving Proof...' : 'Mark as Completed'}
-                            </button>
-                          </form>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="panel queue archive-queue" style={{ marginTop: '24px' }}>
-        <div className="panelTitle">
-          <CheckCircle2 size={18} />
-          <h2>Resolved Grievances Archive</h2>
-        </div>
-        <div className="table">
-          {complaints.filter((complaint) => complaint.status === 'resolved').length === 0 && (
-            <p className="muted" style={{ padding: '20px', textAlign: 'center' }}>No resolved complaints yet.</p>
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
           )}
-          {complaints.filter((complaint) => complaint.status === 'resolved').map((complaint) => {
-            const isExpanded = expandedComplaintId === complaint.id;
-            return (
-              <React.Fragment key={complaint.id}>
-                <article 
-                  className={`row resolved-row ${isExpanded ? 'expanded-row' : ''}`} 
-                  onClick={() => setExpandedComplaintId(isExpanded ? null : complaint.id)}
-                  style={{ cursor: 'pointer', transition: 'background-color 0.2s ease' }}
-                >
-                  <div>
-                    <strong>{complaint.classification.summary}</strong>
-                    <span>
-                      {complaint.place}{complaint.state ? `, ${complaint.state}` : ''} / {complaint.classification.department} / {complaint.reporter_username || 'citizen'}
-                    </span>
-                  </div>
-                  <span style={{ textTransform: 'capitalize' }}>{complaint.classification.category.replace('_', ' ')}</span>
-                  <span className={`pill ${complaint.classification.priority}`}>{complaint.classification.priority}</span>
-                  <span className="pill status-pill resolved">Resolved</span>
-                </article>
-                
-                {isExpanded && (
-                  <div className="complaint-detail-expansion" style={{
-                    padding: '20px',
-                    background: '#f8fafc',
-                    borderLeft: '4px solid #10b981',
-                    borderBottom: '1px solid #cbd8d5',
-                    borderRight: '1px solid #cbd8d5',
-                    borderBottomLeftRadius: '8px',
-                    borderBottomRightRadius: '8px',
-                    marginTop: '-4px',
-                    marginBottom: '8px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '16px'
-                  }} onClick={(e) => e.stopPropagation()}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                      <div>
-                        <h4 style={{ margin: '0 0 6px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Full Grievance Text</h4>
-                        <p style={{ margin: 0, fontSize: '0.95rem', color: '#17202a', whiteSpace: 'pre-wrap' }}>{complaint.text}</p>
-                        
-                        {complaint.voice_transcript && (
-                          <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eef2f6', borderRadius: '8px', borderLeft: '3px solid #64748b' }}>
-                            <h5 style={{ margin: '0 0 4px', fontSize: '0.8rem', color: '#475569' }}>🎙️ Voice Transcript</h5>
-                            <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155', fontStyle: 'italic' }}>"{complaint.voice_transcript}"</p>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <div>
-                          <h4 style={{ margin: '0 0 4px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Reporter Details</h4>
-                          <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Name:</strong> {complaint.reporter_name || 'Anonymous'} ({complaint.reporter_username || 'citizen'})</span>
-                          {complaint.contact && <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Contact:</strong> {complaint.contact}</span>}
-                          <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Date Filed:</strong> {new Date(complaint.created_at).toLocaleString()}</span>
-                        </div>
-                        
-                        <div>
-                          <h4 style={{ margin: '0 0 4px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>AI Classification Info</h4>
-                          <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Assigned Department:</strong> {complaint.classification.department}</span>
-                          <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>AI Confidence:</strong> {(complaint.classification.confidence * 100).toFixed(0)}%</span>
-                        </div>
-                      </div>
-                    </div>
+        </section>
+      </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: complaint.photo_filename || complaint.resolution_photo_filename ? '1fr 1fr' : '1fr', gap: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
-                      {complaint.photo_filename && (
-                        <div>
-                          <h4 style={{ margin: '0 0 8px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Original Evidence Photo</h4>
-                          <a href={`${API_BASE}/uploads/${complaint.photo_filename}`} target="_blank" rel="noreferrer">
-                            <img 
-                              src={`${API_BASE}/uploads/${complaint.photo_filename}`} 
-                              alt="Evidence Photo" 
-                              style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px', border: '1px solid #cbd8d5', objectFit: 'cover' }} 
-                            />
-                          </a>
-                        </div>
-                      )}
-                      
-                      {complaint.resolution_photo_filename && (
-                        <div>
-                          <h4 style={{ margin: '0 0 8px', color: '#174b2a', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <CheckCircle2 size={16} color="#174b2a" /> Resolution Proof
-                          </h4>
-                          <div style={{ marginBottom: '8px', fontSize: '0.85rem', color: '#334155' }}>
-                            Completed by <strong>@{complaint.completed_by}</strong> on {complaint.completed_at ? new Date(complaint.completed_at).toLocaleString() : 'N/A'}
-                          </div>
-                          <a href={`${API_BASE}/uploads/${complaint.resolution_photo_filename}`} target="_blank" rel="noreferrer">
-                            <img 
-                              src={`${API_BASE}/uploads/${complaint.resolution_photo_filename}`} 
-                              alt="Resolution Proof" 
-                              style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px', border: '1px solid #9edab4', objectFit: 'cover' }} 
-                            />
-                          </a>
-                        </div>
-                      )}
+      {/* Floating Chat Bubble & Pop-up for Conversational Analytics */}
+      <div className="floating-analytics-container">
+        <button 
+          className={`floating-chat-fab ${showAnalyticsPopup ? 'active' : ''}`}
+          onClick={() => setShowAnalyticsPopup(!showAnalyticsPopup)}
+          title="AI Analytics Assistant"
+        >
+          {showAnalyticsPopup ? <X size={22} /> : <MessageSquare size={22} />}
+        </button>
+
+        {showAnalyticsPopup && (
+          <div className="analytics-chat-popup">
+            <div className="analytics-chat-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <BarChart3 size={16} color="#ffffff" />
+                <h3 style={{ margin: 0, color: '#ffffff', fontSize: '0.9rem', fontFamily: 'Outfit' }}>Analytics Assistant</h3>
+              </div>
+              <button className="chat-close-btn" onClick={() => setShowAnalyticsPopup(false)}>
+                <X size={14} />
+              </button>
+            </div>
+            
+            <div className="analytics-chat-body">
+              <p className="chat-welcome-msg">
+                Ask me stats about complaints, hotspots, or priorities!
+              </p>
+              
+              {analytics && (
+                <div className="chat-answer-bubble">
+                  <div className="answer-text">{analytics.answer}</div>
+                  <small className="answer-source">{analytics.source}</small>
+                  {analytics.rows.length > 0 && (
+                    <div className="table-container" style={{ overflowX: 'auto', marginTop: '8px' }}>
+                      <table>
+                        <tbody>
+                          {analytics.rows.map((row, index) => (
+                            <tr key={index}>
+                              {Object.values(row).map((value, cellIndex) => (
+                                <td key={cellIndex} style={{ fontSize: '0.78rem', padding: '6px 4px' }}>{String(value)}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                  </div>
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
-      </section>
+                  )}
+                </div>
+              )}
+              {loading && (
+                <div className="chat-loading-bubble">
+                  <RefreshCw className="spin" size={14} />
+                  <span>Analyzing database...</span>
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={askQuestion} className="analytics-chat-footer">
+              <input 
+                value={question} 
+                onChange={(event) => setQuestion(event.target.value)} 
+                placeholder="Ask stats question..."
+                required
+              />
+              <button type="submit" className="chat-send-btn" disabled={loading}>
+                <Send size={14} />
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
     </main>
   );
 }
@@ -1053,8 +1305,21 @@ function AuthScreen({ mode, setMode, form, setForm, loading, notice, onSubmit })
               <option value="Road Department">Road Department</option>
               <option value="Sanitation department">Sanitation Department</option>
               <option value="Electrical department">Electrical Department</option>
+              <option value="Chief Minister">Chief Minister (State Head)</option>
+              <option value="Prime Minister">Prime Minister (Country Head)</option>
             </select>
           </label>
+          {form.user_type === 'Chief Minister' && (
+            <label>
+              Designated State
+              <input
+                value={form.state || ''}
+                onChange={(event) => setForm({ ...form, state: event.target.value })}
+                placeholder="e.g. Delhi, Karnataka, Maharashtra"
+                required
+              />
+            </label>
+          )}
           {mode === 'register' && (
             <>
               <label>

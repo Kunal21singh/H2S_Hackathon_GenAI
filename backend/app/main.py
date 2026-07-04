@@ -150,8 +150,18 @@ async def create_complaint(
     return await store.add(complaint)
 
 
-def _filter_by_user_department(complaints: list[Complaint], user_type: str) -> list[Complaint]:
-    user_type = user_type or "Citizen"
+def _filter_complaints_for_user(complaints: list[Complaint], user: User) -> list[Complaint]:
+    user_type = getattr(user, "user_type", "Citizen")
+    
+    if user_type == "Prime Minister":
+        return complaints
+        
+    if user_type == "Chief Minister":
+        user_state = getattr(user, "state", None)
+        if not user_state:
+            return []
+        return [c for c in complaints if c.state and c.state.strip().lower() == user_state.strip().lower()]
+        
     if user_type == "Citizen":
         return complaints
         
@@ -177,8 +187,7 @@ async def list_complaints(
     store: ComplaintStore = Depends(get_store),
     current_user: User = Depends(get_current_user),
 ) -> list[Complaint]:
-    user_type = getattr(current_user, "user_type", "Citizen")
-    filtered = _filter_by_user_department(await store.list(), user_type)
+    filtered = _filter_complaints_for_user(await store.list(), current_user)
     return sorted(filtered, key=lambda item: item.created_at, reverse=True)
 
 
@@ -200,10 +209,9 @@ async def hotspots(
     store: ComplaintStore = Depends(get_store),
     current_user: User = Depends(get_current_user),
 ) -> list[Hotspot]:
-    user_type = getattr(current_user, "user_type", "Citizen")
     all_complaints = await store.list()
     active = [c for c in all_complaints if c.status != ComplaintStatus.resolved]
-    filtered = _filter_by_user_department(active, user_type)
+    filtered = _filter_complaints_for_user(active, current_user)
     return build_hotspots(filtered)
 
 
@@ -214,8 +222,7 @@ async def analytics(
     store: ComplaintStore = Depends(get_store),
     current_user: User = Depends(get_current_user),
 ) -> AnalyticsAnswer:
-    user_type = getattr(current_user, "user_type", "Citizen")
-    filtered = _filter_by_user_department(await store.list(), user_type)
+    filtered = _filter_complaints_for_user(await store.list(), current_user)
     return await answer_question(settings, payload.question, filtered)
 
 

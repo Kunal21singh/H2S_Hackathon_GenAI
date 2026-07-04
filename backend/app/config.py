@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     local_data_path: str = "./data/complaints.json"
     local_users_path: str = "./data/users.json"
     auth_secret: str = "change-this-before-demo"
+    vertex_ai_search_project_id: str | None = None
+    vertex_ai_search_location: str = "global"
+    vertex_ai_search_datastore_id: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

@@ -30,6 +30,7 @@ class UserStore:
             full_name=payload.full_name.strip(),
             phone=_normalize_phone(payload.phone),
             user_type=payload.user_type,
+            state=payload.state,
             is_active=True,
             password_hash=_hash_password(payload.password),
             created_at=datetime.now(timezone.utc),

@@ -117,6 +117,7 @@ class UserPublic(BaseModel):
     full_name: str
     phone: str
     user_type: str = "Citizen"
+    state: str | None = None
     is_active: bool
     created_at: datetime
 
@@ -131,6 +132,7 @@ class UserRegister(BaseModel):
     phone: str = Field(min_length=7, max_length=20)
     password: str = Field(min_length=6, max_length=128)
     user_type: str = "Citizen"
+    state: str | None = None
 
 
 class UserLogin(BaseModel):

@@ -7,11 +7,84 @@ from app.models import AnalyticsAnswer, Complaint
 
 
 async def answer_question(settings: Settings, question: str, complaints: list[Complaint]) -> AnalyticsAnswer:
+    if settings.vertex_ai_search_datastore_id:
+        vertex_answer = await _try_vertex_ai_search(settings, question)
+        if vertex_answer:
+            return vertex_answer
+
     if settings.google_api_key and settings.google_cloud_project:
         cloud_answer = await _try_bigquery_answer(settings, question)
         if cloud_answer:
             return cloud_answer
     return _local_answer(question, complaints)
+
+
+async def _try_vertex_ai_search(settings: Settings, question: str) -> AnalyticsAnswer | None:
+    try:
+        from google.cloud import discoveryengine_v1beta as discoveryengine
+
+        project_id = settings.vertex_ai_search_project_id or settings.google_cloud_project
+        if not project_id:
+            return None
+
+        client = discoveryengine.SearchServiceClient()
+        serving_config = client.serving_config_path(
+            project=project_id,
+            location=settings.vertex_ai_search_location,
+            data_store=settings.vertex_ai_search_datastore_id,
+            serving_config="default_serving_config",
+        )
+
+        request = discoveryengine.SearchRequest(
+            serving_config=serving_config,
+            query=question,
+            page_size=5,
+            content_search_spec=discoveryengine.SearchRequest.ContentSearchSpec(
+                summary_spec=discoveryengine.SearchRequest.ContentSearchSpec.SummarySpec(
+                    summary_result_count=3,
+                    include_citations=True,
+                    ignore_adversarial_query=True
+                )
+            )
+        )
+
+        import asyncio
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(None, lambda: client.search(request))
+
+        summary = ""
+        if response.summary and response.summary.summary_text:
+            summary = response.summary.summary_text
+
+        rows = []
+        for result in response.results:
+            doc = result.document
+            doc_data = {}
+            if doc.derived_struct_data:
+                try:
+                    from google.protobuf.json_format import MessageToDict
+                    doc_data = MessageToDict(doc.derived_struct_data)
+                except Exception:
+                    doc_data = dict(doc.derived_struct_data)
+            else:
+                doc_data = {
+                    "id": doc.id,
+                    "name": doc.name,
+                }
+            rows.append(doc_data)
+
+        if summary or rows:
+            return AnalyticsAnswer(
+                question=question,
+                answer=summary or f"Found {len(rows)} matching document(s) from Vertex AI Search.",
+                sql=None,
+                rows=rows,
+                source="vertex-ai-search",
+            )
+    except Exception as e:
+        print(f"Vertex AI Search error: {e}")
+        return None
+    return None
 
 
 async def _try_bigquery_answer(settings: Settings, question: str) -> AnalyticsAnswer | None:
