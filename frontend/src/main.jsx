@@ -1174,7 +1174,7 @@ function App() {
                             </div>
                           )}
 
-                          {(session.user.user_type || 'Citizen') !== 'Citizen' && complaint.status !== 'resolved' && (
+                          {!['Citizen', 'Chief Minister', 'Prime Minister'].includes(session.user.user_type || 'Citizen') && complaint.status !== 'resolved' && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
                               {/* Add Update Comment Form */}
                               <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '16px' }}>

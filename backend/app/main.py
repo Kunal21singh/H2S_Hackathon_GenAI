@@ -212,7 +212,8 @@ async def add_complaint_comment(
     store: ComplaintStore = Depends(get_store),
     current_user: User = Depends(get_current_user),
 ) -> Complaint:
-    if getattr(current_user, "user_type", "Citizen") == "Citizen":
+    user_type = getattr(current_user, "user_type", "Citizen")
+    if user_type in ("Citizen", "Chief Minister", "Prime Minister"):
         raise HTTPException(status_code=403, detail="Only department officials can add comments.")
         
     complaint = await store.add_comment(complaint_id, payload.comment, current_user.username)
