@@ -32,9 +32,17 @@ class Classification(BaseModel):
     confidence: float = Field(ge=0, le=1)
 
 
+class TimelineEvent(BaseModel):
+    status: str
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    description: str
+    actor: str | None = None
+
+
 class Complaint(BaseModel):
     id: str = Field(default_factory=lambda: f"cmp_{uuid4().hex[:10]}")
     text: str
+    timeline: list[TimelineEvent] = Field(default_factory=list)
     voice_transcript: str | None = None
     photo_filename: str | None = None
     photo_content_type: str | None = None
@@ -166,3 +174,7 @@ class AnalyticsAnswer(BaseModel):
     sql: str | None = None
     rows: list[dict[str, Any]] = []
     source: str
+
+
+class CommentCreate(BaseModel):
+    comment: str

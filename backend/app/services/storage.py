@@ -29,6 +29,24 @@ class ComplaintStore:
     async def add(self, complaint: Complaint) -> Complaint:
         complaint.status = ComplaintStatus.routed
         complaint.updated_at = datetime.now(timezone.utc)
+        
+        # Build initial timeline history
+        from app.models import TimelineEvent
+        complaint.timeline = [
+            TimelineEvent(
+                status="new",
+                timestamp=complaint.created_at,
+                description="Complaint reported by citizen.",
+                actor=complaint.reporter_username or "citizen"
+            ),
+            TimelineEvent(
+                status="routed",
+                timestamp=complaint.updated_at,
+                description=f"Complaint classified as '{complaint.classification.category}' and automatically routed to {complaint.classification.department} department.",
+                actor="AI Classifier"
+            )
+        ]
+        
         if self._firestore_client:
             self._firestore_client.collection(self.settings.firestore_collection).document(complaint.id).set(
                 complaint.model_dump(mode="json")
@@ -46,13 +64,31 @@ class ComplaintStore:
             if item.id == complaint_id:
                 item.status = status
                 item.updated_at = datetime.now(timezone.utc)
+                
+                # Append status transition to timeline
+                from app.models import TimelineEvent
+                desc = f"Action started. Status changed to '{status.value}'."
+                if status == ComplaintStatus.in_progress:
+                    desc = "Action started. Department personnel initiated resolution work."
+                elif status == ComplaintStatus.routed:
+                    desc = "Complaint routed back to department queue."
+                
+                if not hasattr(item, 'timeline') or item.timeline is None:
+                    item.timeline = []
+                item.timeline.append(TimelineEvent(
+                    status=status.value,
+                    timestamp=item.updated_at,
+                    description=desc,
+                    actor="Department Official"
+                ))
+                
                 updated = item
                 break
         if not updated:
             return None
         if self._firestore_client:
-            self._firestore_client.collection(self.settings.firestore_collection).document(complaint_id).update(
-                {"status": status.value, "updated_at": updated.updated_at.isoformat()}
+            self._firestore_client.collection(self.settings.firestore_collection).document(complaint_id).set(
+                updated.model_dump(mode="json")
             )
         else:
             self._write_local(items)
@@ -71,20 +107,52 @@ class ComplaintStore:
                 item.completed_at = datetime.now(timezone.utc)
                 item.completed_by = completed_by
                 item.updated_at = datetime.now(timezone.utc)
+                
+                # Append resolved event to timeline
+                from app.models import TimelineEvent
+                if not hasattr(item, 'timeline') or item.timeline is None:
+                    item.timeline = []
+                item.timeline.append(TimelineEvent(
+                    status="resolved",
+                    timestamp=item.completed_at,
+                    description="Grievance resolved successfully with photo proof attached.",
+                    actor=completed_by
+                ))
+                
                 updated = item
                 break
         if not updated:
             return None
         if self._firestore_client:
-            self._firestore_client.collection(self.settings.firestore_collection).document(complaint_id).update(
-                {
-                    "status": ComplaintStatus.resolved.value,
-                    "resolution_photo_filename": filename,
-                    "resolution_photo_content_type": content_type,
-                    "completed_at": updated.completed_at.isoformat(),
-                    "completed_by": completed_by,
-                    "updated_at": updated.updated_at.isoformat()
-                }
+            self._firestore_client.collection(self.settings.firestore_collection).document(complaint_id).set(
+                updated.model_dump(mode="json")
+            )
+        else:
+            self._write_local(items)
+        return updated
+
+    async def add_comment(self, complaint_id: str, comment: str, actor: str) -> Complaint | None:
+        items = await self.list()
+        updated: Complaint | None = None
+        for item in items:
+            if item.id == complaint_id:
+                from app.models import TimelineEvent
+                if not hasattr(item, 'timeline') or item.timeline is None:
+                    item.timeline = []
+                item.timeline.append(TimelineEvent(
+                    status="in_progress",
+                    timestamp=datetime.now(timezone.utc),
+                    description=f"Progress Update: {comment.strip()}",
+                    actor=actor
+                ))
+                item.updated_at = datetime.now(timezone.utc)
+                updated = item
+                break
+        if not updated:
+            return None
+        if self._firestore_client:
+            self._firestore_client.collection(self.settings.firestore_collection).document(complaint_id).set(
+                updated.model_dump(mode="json")
             )
         else:
             self._write_local(items)

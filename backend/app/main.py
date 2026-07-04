@@ -12,6 +12,7 @@ from app.models import (
     AnalyticsAnswer,
     AnalyticsQuestion,
     AuthSession,
+    CommentCreate,
     Complaint,
     ComplaintStatus,
     Hotspot,
@@ -199,6 +200,22 @@ async def update_status(
     current_user: User = Depends(get_current_user),
 ) -> Complaint:
     complaint = await store.update_status(complaint_id, status)
+    if not complaint:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+    return complaint
+
+
+@app.post("/complaints/{complaint_id}/comments", response_model=Complaint)
+async def add_complaint_comment(
+    complaint_id: str,
+    payload: CommentCreate,
+    store: ComplaintStore = Depends(get_store),
+    current_user: User = Depends(get_current_user),
+) -> Complaint:
+    if getattr(current_user, "user_type", "Citizen") == "Citizen":
+        raise HTTPException(status_code=403, detail="Only department officials can add comments.")
+        
+    complaint = await store.add_comment(complaint_id, payload.comment, current_user.username)
     if not complaint:
         raise HTTPException(status_code=404, detail="Complaint not found")
     return complaint

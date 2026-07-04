@@ -139,6 +139,84 @@ function HotspotMap({ hotspots }) {
   );
 }
 
+function ComplaintTimeline({ complaint }) {
+  let events = [...(complaint.timeline || [])];
+  
+  const hasNew = events.some(e => e.status === 'new');
+  if (!hasNew) {
+    const fallbacks = [
+      { status: 'new', timestamp: complaint.created_at, description: 'Complaint reported by citizen.', actor: complaint.reporter_username || 'citizen' },
+      { status: 'routed', timestamp: complaint.created_at, description: `Complaint automatically routed to ${complaint.classification.department} department.`, actor: 'AI System' }
+    ];
+    events = [...fallbacks, ...events];
+  }
+
+  const hasResolved = events.some(e => e.status === 'resolved');
+  if (complaint.status === 'resolved' && !hasResolved) {
+    events.push({
+      status: 'resolved',
+      timestamp: complaint.completed_at || complaint.updated_at,
+      description: 'Grievance resolved successfully.',
+      actor: complaint.completed_by || 'Officer'
+    });
+  }
+
+  return (
+    <div className="timeline-container" style={{ marginTop: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+      <h4 style={{ margin: '0 0 12px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <span>📋 Status Timeline & History</span>
+      </h4>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingLeft: '8px' }}>
+        {events.map((evt, idx) => {
+          const isLast = idx === events.length - 1;
+          const statusColors = {
+            new: '#3b82f6',
+            routed: '#8b5cf6',
+            in_progress: '#f59e0b',
+            resolved: '#10b981'
+          };
+          const dotColor = statusColors[evt.status] || '#64748b';
+          
+          return (
+            <div key={idx} style={{ display: 'flex', gap: '12px', position: 'relative' }}>
+              {!isLast && (
+                <div style={{
+                  position: 'absolute',
+                  left: '6px',
+                  top: '14px',
+                  bottom: '-16px',
+                  width: '2px',
+                  background: '#cbd5e1'
+                }} />
+              )}
+              <div style={{
+                width: '14px',
+                height: '14px',
+                borderRadius: '50%',
+                background: dotColor,
+                border: '3px solid #ffffff',
+                boxShadow: '0 0 0 1px #cbd5e1',
+                zIndex: 2,
+                flexShrink: 0,
+                marginTop: '3px'
+              }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#1e293b', lineHeight: '1.2' }}>
+                  {evt.description} 
+                  {evt.actor && <span style={{ fontWeight: 'normal', color: '#64748b', fontSize: '0.78rem' }}> (by @{evt.actor})</span>}
+                </span>
+                <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                  {new Date(evt.timestamp).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ExecutiveMonitor({ user, complaints }) {
   const [selectedState, setSelectedState] = React.useState(null);
 
@@ -438,6 +516,7 @@ function App() {
   });
   const [expandedComplaintId, setExpandedComplaintId] = useState(null);
   const [resolvingId, setResolvingId] = useState(null);
+  const [commentingId, setCommentingId] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAnalyticsPopup, setShowAnalyticsPopup] = useState(false);
@@ -727,6 +806,41 @@ function App() {
       setNotice({ type: 'error', text: error.message || 'Error resolving complaint.' });
     } finally {
       setResolvingId(null);
+    }
+  }
+
+  async function addProgressComment(event, complaintId) {
+    event.preventDefault();
+    const formEl = event.currentTarget;
+    const inputEl = formEl.elements.namedItem('comment_text');
+    const comment = inputEl.value;
+    if (!comment.trim()) return;
+
+    setCommentingId(complaintId);
+    setNotice(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/complaints/${complaintId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders(session.token),
+        },
+        body: JSON.stringify({ comment }),
+      });
+
+      if (!res.ok) {
+        const detail = await readError(res);
+        throw new Error(detail || 'Could not add progress comment.');
+      }
+
+      await refresh();
+      formEl.reset();
+      setNotice({ type: 'success', text: 'Progress update logged to timeline.' });
+    } catch (error) {
+      setNotice({ type: 'error', text: error.message || 'Failed to submit update comment.' });
+    } finally {
+      setCommentingId(null);
     }
   }
 
@@ -1023,6 +1137,7 @@ function App() {
                               )}
                             </div>
                           </div>
+                          <ComplaintTimeline complaint={complaint} />
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: complaint.photo_filename || complaint.resolution_photo_filename ? '1fr 1fr' : '1fr', gap: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
@@ -1060,46 +1175,92 @@ function App() {
                           )}
 
                           {(session.user.user_type || 'Citizen') !== 'Citizen' && complaint.status !== 'resolved' && (
-                            <div style={{ background: '#f0fdf4', border: '1px dashed #86efac', borderRadius: '8px', padding: '16px' }}>
-                              <h4 style={{ margin: '0 0 8px', color: '#166534', fontSize: '0.9rem', fontWeight: 'bold' }}>Action Required: Resolve</h4>
-                              <form onSubmit={(e) => resolveComplaint(e, complaint.id)} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                <label style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }}>
-                                  <span>Attach Repair Photo Proof:</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+                              {/* Add Update Comment Form */}
+                              <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '16px' }}>
+                                <h4 style={{ margin: '0 0 8px', color: '#475569', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase' }}>Add Progress Update</h4>
+                                <form onSubmit={(e) => addProgressComment(e, complaint.id)} style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}>
                                   <input 
-                                    name="resolution_photo" 
-                                    type="file" 
-                                    accept="image/*" 
+                                    name="comment_text" 
+                                    type="text" 
+                                    placeholder="Enter a progress note or update..." 
                                     required 
-                                    style={{ fontSize: '0.85rem' }} 
+                                    style={{ 
+                                      flex: '1 1 auto', 
+                                      minWidth: '0', 
+                                      padding: '8px 12px', 
+                                      fontSize: '0.85rem', 
+                                      border: '1px solid #cbd8d5', 
+                                      borderRadius: '6px',
+                                      height: '38px',
+                                      boxSizing: 'border-box'
+                                    }}
                                   />
-                                </label>
-                                <button 
-                                  type="submit" 
-                                  className="primary success-btn" 
-                                  disabled={resolvingId === complaint.id}
-                                  style={{ 
-                                    padding: '8px 12px', 
-                                    background: '#166534', 
-                                    color: '#ffffff', 
-                                    border: 'none', 
-                                    borderRadius: '6px', 
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '6px',
-                                    fontWeight: 'bold',
-                                    fontSize: '0.85rem'
-                                  }}
-                                >
-                                  {resolvingId === complaint.id ? (
-                                    <RefreshCw className="spin" size={14} />
-                                  ) : (
-                                    <CheckCircle2 size={14} />
-                                  )}
-                                  {resolvingId === complaint.id ? 'Saving Proof...' : 'Resolve Complaint'}
-                                </button>
-                              </form>
+                                  <button 
+                                    type="submit" 
+                                    className="primary" 
+                                    disabled={commentingId === complaint.id}
+                                    style={{ 
+                                      width: 'auto',
+                                      minHeight: '38px',
+                                      height: '38px',
+                                      padding: '0 16px', 
+                                      fontSize: '0.85rem', 
+                                      whiteSpace: 'nowrap',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      boxSizing: 'border-box'
+                                    }}
+                                  >
+                                    {commentingId === complaint.id ? <RefreshCw className="spin" size={14} /> : <MessageSquare size={14} />}
+                                    Add Note
+                                  </button>
+                                </form>
+                              </div>
+
+                              {/* Resolve Form */}
+                              <div style={{ background: '#f0fdf4', border: '1px dashed #86efac', borderRadius: '8px', padding: '16px' }}>
+                                <h4 style={{ margin: '0 0 8px', color: '#166534', fontSize: '0.9rem', fontWeight: 'bold' }}>Action Required: Resolve</h4>
+                                <form onSubmit={(e) => resolveComplaint(e, complaint.id)} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                  <label style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }}>
+                                    <span>Attach Repair Photo Proof:</span>
+                                    <input 
+                                      name="resolution_photo" 
+                                      type="file" 
+                                      accept="image/*" 
+                                      required 
+                                      style={{ fontSize: '0.85rem' }} 
+                                    />
+                                  </label>
+                                  <button 
+                                    type="submit" 
+                                    className="primary success-btn" 
+                                    disabled={resolvingId === complaint.id}
+                                    style={{ 
+                                      padding: '8px 12px', 
+                                      background: '#166534', 
+                                      color: '#ffffff', 
+                                      border: 'none', 
+                                      borderRadius: '6px', 
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '6px',
+                                      fontWeight: 'bold',
+                                      fontSize: '0.85rem'
+                                    }}
+                                  >
+                                    {resolvingId === complaint.id ? (
+                                      <RefreshCw className="spin" size={14} />
+                                    ) : (
+                                      <CheckCircle2 size={14} />
+                                    )}
+                                    {resolvingId === complaint.id ? 'Saving Proof...' : 'Resolve Complaint'}
+                                  </button>
+                                </form>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1193,6 +1354,7 @@ function App() {
                               <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>AI Confidence:</strong> {(complaint.classification.confidence * 100).toFixed(0)}%</span>
                             </div>
                           </div>
+                          <ComplaintTimeline complaint={complaint} />
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: complaint.photo_filename || complaint.resolution_photo_filename ? '1fr 1fr' : '1fr', gap: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
