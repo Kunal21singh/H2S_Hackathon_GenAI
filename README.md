@@ -78,3 +78,56 @@ For Cloud Run, configure these as service environment variables and grant the ru
 - `GET /health` confirms service readiness.
 
 All dashboard complaint and analytics endpoints require `Authorization: Bearer <token>` after login. Submitted complaints automatically inherit the logged-in user's full name, unique username, and phone number for notification workflows.
+
+## GCP deployment steps
+
+### GCP CLI Setup
+```
+Log in to your Google Cloud SDK
+gcloud auth login
+
+Set your active project
+gcloud config set project [YOUR_PROJECT_ID]
+
+Enable Google APIs
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com firestore.googleapis.com
+```
+
+### Deploy Backend (FastAPI)
+```
+cd backend
+
+# Build and deploy backend to Cloud Run, enabling Firestore persistence
+gcloud run deploy civicpulse-backend \
+    --source . \
+    --platform managed \
+    --region us-central1 \
+    --allow-unauthenticated \
+    --set-env-vars="USE_FIRESTORE=true,GOOGLE_CLOUD_PROJECT=[YOUR_PROJECT_ID],GOOGLE_API_KEY=[GEMINI_API_KEY]"
+```
+
+### Deploy Frontend (Vite + Nginx)
+
+```
+cd ../frontend
+
+# Build and deploy frontend, configuring the backend URL at runtime via env variables
+gcloud run deploy civicpulse-frontend \
+    --source . \
+    --platform managed \
+    --region us-central1 \
+    --allow-unauthenticated \
+    --port 80 \
+    --set-env-vars="VITE_API_BASE=https://civicpulse-backend-xxxx.a.run.app"
+```
+
+
+### Configure CORS on Backend
+To allow the frontend to communicate with the backend, add the frontend origin to the backend's allowed CORS origins:
+
+```
+gcloud run services update civicpulse-backend \
+    --region us-central1 \
+    --update-env-vars="API_CORS_ORIGINS=https://civicpulse-frontend-xxxx.a.run.app"
+```
+
