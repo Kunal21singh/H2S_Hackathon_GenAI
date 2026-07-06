@@ -163,8 +163,8 @@ function ComplaintTimeline({ complaint }) {
   }
 
   return (
-    <div className="timeline-container" style={{ marginTop: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
-      <h4 style={{ margin: '0 0 12px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+    <div className="timeline-container" style={{ marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+      <h4 style={{ margin: '0 0 12px', color: 'var(--color-primary-hover)', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
         <span>📋 Status Timeline & History</span>
       </h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingLeft: '8px' }}>
@@ -187,7 +187,7 @@ function ComplaintTimeline({ complaint }) {
                   top: '14px',
                   bottom: '-16px',
                   width: '2px',
-                  background: '#cbd5e1'
+                  background: 'var(--border-color)'
                 }} />
               )}
               <div style={{
@@ -195,18 +195,18 @@ function ComplaintTimeline({ complaint }) {
                 height: '14px',
                 borderRadius: '50%',
                 background: dotColor,
-                border: '3px solid #ffffff',
-                boxShadow: '0 0 0 1px #cbd5e1',
+                border: '3px solid var(--bg-panel-solid)',
+                boxShadow: '0 0 0 1px var(--border-color)',
                 zIndex: 2,
                 flexShrink: 0,
                 marginTop: '3px'
               }} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#1e293b', lineHeight: '1.2' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-main)', lineHeight: '1.2' }}>
                   {evt.description} 
-                  {evt.actor && <span style={{ fontWeight: 'normal', color: '#64748b', fontSize: '0.78rem' }}> (by @{evt.actor})</span>}
+                  {evt.actor && <span style={{ fontWeight: 'normal', color: 'var(--color-muted)', fontSize: '0.78rem' }}> (by @{evt.actor})</span>}
                 </span>
-                <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--color-muted)' }}>
                   {new Date(evt.timestamp).toLocaleString()}
                 </span>
               </div>
@@ -214,6 +214,318 @@ function ComplaintTimeline({ complaint }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function AnalyticsDashboard({ user, complaints }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState('depts'); // 'depts' | 'states' | 'insights'
+
+  const filteredComplaints = useMemo(() => {
+    if (!user) return complaints;
+    const userType = user.user_type || 'Citizen';
+
+    if (userType === 'Admin' || userType === 'Prime Minister') {
+      return complaints;
+    }
+
+    if (userType === 'Chief Minister') {
+      const userState = (user.state || '').trim().toLowerCase();
+      return complaints.filter(c => c.state && c.state.trim().toLowerCase() === userState);
+    }
+
+    if (userType !== 'Citizen') {
+      const userState = (user.state || '').trim().toLowerCase();
+      const userTypeLower = userType.toLowerCase();
+      let depts = [];
+      if (userTypeLower.includes('water')) depts = ['Water Works', 'Drainage'];
+      else if (userTypeLower.includes('road')) depts = ['Roads'];
+      else if (userTypeLower.includes('fire')) depts = ['Fire Department', 'Traffic'];
+      else if (userTypeLower.includes('sanitation')) depts = ['Sanitation'];
+      else if (userTypeLower.includes('electrical')) depts = ['Electrical'];
+
+      return complaints.filter(c =>
+        c.state && c.state.trim().toLowerCase() === userState &&
+        depts.includes(c.classification?.department)
+      );
+    }
+
+    return complaints;
+  }, [complaints, user]);
+
+  const getTitle = () => {
+    if (!user) return 'Grievance Analytics & Diagnostics';
+    const userType = user.user_type || 'Citizen';
+    if (userType === 'Admin' || userType === 'Prime Minister') {
+      return 'National Grievance Diagnostics Center (Global Access)';
+    }
+    if (userType === 'Chief Minister') {
+      return `${user.state || 'State'} Executive Diagnostics Panel (CM Access)`;
+    }
+    if (userType !== 'Citizen') {
+      return `${user.state || 'State'} ${userType} Diagnostics Panel (Officer Access)`;
+    }
+    return 'Public Grievance Diagnostics Center (Citizen Access)';
+  };
+
+  const deptStats = {};
+  const stateStats = {};
+  let totalPriorityCount = { low: 0, medium: 0, high: 0, critical: 0 };
+
+  filteredComplaints.forEach(c => {
+    // Department stats
+    const dept = c.classification?.department || 'Unassigned';
+    if (!deptStats[dept]) {
+      deptStats[dept] = { total: 0, resolved: 0, active: 0 };
+    }
+    deptStats[dept].total += 1;
+    if (c.status === 'resolved') {
+      deptStats[dept].resolved += 1;
+    } else {
+      deptStats[dept].active += 1;
+    }
+
+    // State stats
+    const state = c.state || 'Unknown';
+    if (!stateStats[state]) {
+      stateStats[state] = { total: 0, resolved: 0, active: 0 };
+    }
+    stateStats[state].total += 1;
+    if (c.status === 'resolved') {
+      stateStats[state].resolved += 1;
+    } else {
+      stateStats[state].active += 1;
+    }
+
+    // Priority stats
+    const priority = (c.classification?.priority || 'medium').toLowerCase();
+    if (totalPriorityCount[priority] !== undefined) {
+      totalPriorityCount[priority] += 1;
+    }
+  });
+
+  const deptsList = Object.entries(deptStats).map(([name, stats]) => ({
+    name,
+    ...stats,
+    rate: stats.total > 0 ? ((stats.resolved / stats.total) * 100).toFixed(0) : '0',
+  })).sort((a, b) => b.total - a.total);
+
+  const statesList = Object.entries(stateStats).map(([name, stats]) => ({
+    name,
+    ...stats,
+    rate: stats.total > 0 ? ((stats.resolved / stats.total) * 100).toFixed(0) : '0',
+  })).sort((a, b) => b.total - a.total);
+
+  const maxTotalDept = deptsList.length > 0 ? Math.max(...deptsList.map(d => d.total)) : 1;
+  const maxTotalState = statesList.length > 0 ? Math.max(...statesList.map(s => s.total)) : 1;
+
+  // AI-generated Dynamic Smart Insights
+  const insights = [];
+  if (deptsList.length > 0) {
+    const busyDept = deptsList[0];
+    insights.push({
+      type: 'info',
+      icon: '💼',
+      title: 'Highest Load',
+      text: `${busyDept.name} department is currently handling the highest volume with ${busyDept.total} total cases.`
+    });
+
+    const worstDept = [...deptsList].sort((a, b) => parseFloat(a.rate) - parseFloat(b.rate))[0];
+    if (worstDept && parseFloat(worstDept.rate) < 60) {
+      insights.push({
+        type: 'warning',
+        icon: '⚠️',
+        title: 'Performance Alert',
+        text: `${worstDept.name} department has a low resolution rate of ${worstDept.rate}%. High bottleneck risk.`
+      });
+    }
+  }
+
+  if (statesList.length > 0) {
+    const bestState = [...statesList].sort((a, b) => parseFloat(b.rate) - parseFloat(a.rate))[0];
+    if (bestState && parseFloat(bestState.rate) > 50) {
+      insights.push({
+        type: 'success',
+        icon: '🏆',
+        title: 'Top Performing Region',
+        text: `State of ${bestState.name} is leading with a ${bestState.rate}% complaint resolution rate!`
+      });
+    }
+  }
+
+  const highCritical = (totalPriorityCount.critical || 0) + (totalPriorityCount.high || 0);
+  if (highCritical > 0) {
+    insights.push({
+      type: 'danger',
+      icon: '🔥',
+      title: 'Priority Warning',
+      text: `${highCritical} active cases are marked High or Critical priority, requiring urgent field deployment.`
+    });
+  }
+
+  return (
+    <div className="panel analytics-panel" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '14px' }}>
+      <div 
+        className="panelTitle collapsible-header" 
+        onClick={() => setCollapsed(!collapsed)}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <BarChart3 size={18} />
+          <h2>{getTitle()}</h2>
+        </div>
+        <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>{collapsed ? '▶ Expand' : '▼ Collapse'}</span>
+      </div>
+
+      {!collapsed && (
+        <>
+          <div className="tabHeader" style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+            <button 
+              onClick={() => setActiveTab('depts')} 
+              className={`tabButton ${activeTab === 'depts' ? 'active' : ''}`}
+              style={{
+                background: activeTab === 'depts' ? 'var(--color-primary)' : 'transparent',
+                color: '#ffffff',
+                border: 'none',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                fontSize: '0.8rem',
+                cursor: 'pointer'
+              }}
+            >
+              📊 Department Volume
+            </button>
+            <button 
+              onClick={() => setActiveTab('states')} 
+              className={`tabButton ${activeTab === 'states' ? 'active' : ''}`}
+              style={{
+                background: activeTab === 'states' ? 'var(--color-primary)' : 'transparent',
+                color: '#ffffff',
+                border: 'none',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                fontSize: '0.8rem',
+                cursor: 'pointer'
+              }}
+            >
+              🗺️ Regional Performance
+            </button>
+            <button 
+              onClick={() => setActiveTab('insights')} 
+              className={`tabButton ${activeTab === 'insights' ? 'active' : ''}`}
+              style={{
+                background: activeTab === 'insights' ? 'var(--color-primary)' : 'transparent',
+                color: '#ffffff',
+                border: 'none',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                fontSize: '0.8rem',
+                cursor: 'pointer'
+              }}
+            >
+              💡 Smart AI Diagnostics
+            </button>
+          </div>
+
+          <div className="tabContent" style={{ minHeight: '180px', paddingTop: '10px' }}>
+            {activeTab === 'depts' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {deptsList.length === 0 ? (
+                  <p className="muted">No department data available.</p>
+                ) : (
+                  deptsList.map(dept => {
+                    const pct = ((dept.total / maxTotalDept) * 100).toFixed(0);
+                    return (
+                      <div key={dept.name} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: '600' }}>
+                          <span>{dept.name}</span>
+                          <span className="muted">{dept.active} Active / {dept.resolved} Resolved ({dept.total} Total)</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div className="progress-container" style={{ flex: 1, height: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', overflow: 'hidden' }}>
+                            <div style={{
+                              width: `${pct}%`,
+                              height: '100%',
+                              background: 'linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)',
+                              borderRadius: '6px',
+                              transition: 'width 0.5s ease'
+                            }} />
+                          </div>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '36px', textAlign: 'right' }}>{dept.rate}%</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {activeTab === 'states' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {statesList.length === 0 ? (
+                  <p className="muted">No regional data available.</p>
+                ) : (
+                  statesList.map(st => {
+                    const pct = ((st.total / maxTotalState) * 100).toFixed(0);
+                    return (
+                      <div key={st.name} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: '600' }}>
+                          <span>📍 {st.name}</span>
+                          <span className="muted">{st.active} Active / {st.resolved} Resolved</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div className="progress-container" style={{ flex: 1, height: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', overflow: 'hidden' }}>
+                            <div style={{
+                              width: `${pct}%`,
+                              height: '100%',
+                              background: 'linear-gradient(90deg, var(--color-accent) 0%, #10b981 100%)',
+                              borderRadius: '6px',
+                              transition: 'width 0.5s ease'
+                            }} />
+                          </div>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '36px', textAlign: 'right' }}>{st.rate}%</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {activeTab === 'insights' && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                {insights.length === 0 ? (
+                  <p className="muted" style={{ gridColumn: '1 / -1' }}>Awaiting more complaint inputs to analyze regional diagnostics.</p>
+                ) : (
+                  insights.map((insight, idx) => (
+                    <div 
+                      key={idx} 
+                      style={{
+                        padding: '12px',
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-primary-hover)' }}>
+                        <span>{insight.icon}</span>
+                        <span>{insight.title}</span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--color-muted)', lineHeight: '1.4' }}>
+                        {insight.text}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -288,42 +600,29 @@ function ExecutiveMonitor({ user, complaints }) {
                   key={st.name} 
                   onClick={() => setSelectedState(isActive ? null : st.name)}
                   className={`monitor-card ${isActive ? 'active' : ''}`}
-                  style={{
-                    border: isActive ? '2px solid var(--color-primary)' : '1px solid #e2e8f0',
-                    borderRadius: '12px',
-                    padding: '14px',
-                    background: '#ffffff',
-                    cursor: 'pointer',
-                    boxShadow: isActive ? 'var(--shadow-md)' : 'var(--shadow-sm)',
-                    transition: 'all 0.2s ease',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    gap: '10px',
-                  }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: '700', fontSize: '0.9rem', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{st.name}</span>
-                    <span className="pill" style={{ background: '#f1f5f9', color: '#64748b', fontSize: '0.7rem', padding: '2px 6px', fontWeight: 'bold' }}>{st.total} Total</span>
+                    <span className="state-name" style={{ fontWeight: '700', fontSize: '0.9rem', color: 'var(--color-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{st.name}</span>
+                    <span className="pill" style={{ fontSize: '0.7rem', padding: '2px 6px', fontWeight: 'bold' }}>{st.total} Total</span>
                   </div>
                   
                   <div style={{ display: 'flex', gap: '16px', fontSize: '0.8rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ color: '#dc2626', fontWeight: '700', fontSize: '1rem' }}>{st.active}</span>
-                      <span style={{ fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase' }}>Active</span>
+                      <span style={{ color: '#ef4444', fontWeight: '700', fontSize: '1rem' }}>{st.active}</span>
+                      <span className="stat-label" style={{ fontSize: '0.68rem', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Active</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ color: '#16a34a', fontWeight: '700', fontSize: '1rem' }}>{st.resolved}</span>
-                      <span style={{ fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase' }}>Resolved</span>
+                      <span style={{ color: '#10b981', fontWeight: '700', fontSize: '1rem' }}>{st.resolved}</span>
+                      <span className="stat-label" style={{ fontSize: '0.68rem', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Resolved</span>
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', fontWeight: '600' }}>
-                      <span style={{ color: '#64748b' }}>Resolved Rate</span>
+                      <span className="stat-label" style={{ color: 'var(--color-muted)' }}>Resolved Rate</span>
                       <span style={{ color: barColor }}>{st.rate}%</span>
                     </div>
-                    <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div className="progress-container">
                       <div style={{ width: `${st.rate}%`, height: '100%', background: barColor, borderRadius: '3px', transition: 'width 0.3s ease' }}></div>
                     </div>
                   </div>
@@ -353,39 +652,29 @@ function ExecutiveMonitor({ user, complaints }) {
                   <div 
                     key={dp.name}
                     className="monitor-card"
-                    style={{
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '12px',
-                      padding: '12px',
-                      background: '#ffffff',
-                      boxShadow: 'var(--shadow-sm)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                    }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: '700', fontSize: '0.85rem', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dp.name}</span>
-                      <span className="pill" style={{ background: '#f1f5f9', color: '#64748b', fontSize: '0.68rem', padding: '2px 5px', fontWeight: 'bold' }}>{dp.total} Total</span>
+                      <span className="dept-name" style={{ fontWeight: '700', fontSize: '0.85rem', color: 'var(--color-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dp.name}</span>
+                      <span className="pill" style={{ fontSize: '0.68rem', padding: '2px 5px', fontWeight: 'bold' }}>{dp.total} Total</span>
                     </div>
                     
                     <div style={{ display: 'flex', gap: '14px', fontSize: '0.75rem' }}>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ color: '#dc2626', fontWeight: '700', fontSize: '0.9rem' }}>{dp.active}</span>
-                        <span style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Active</span>
+                        <span style={{ color: '#ef4444', fontWeight: '700', fontSize: '0.9rem' }}>{dp.active}</span>
+                        <span className="stat-label" style={{ fontSize: '0.65rem', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Active</span>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ color: '#16a34a', fontWeight: '700', fontSize: '0.9rem' }}>{dp.resolved}</span>
-                        <span style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Resolved</span>
+                        <span style={{ color: '#10b981', fontWeight: '700', fontSize: '0.9rem' }}>{dp.resolved}</span>
+                        <span className="stat-label" style={{ fontSize: '0.65rem', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Resolved</span>
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', fontWeight: '600' }}>
-                        <span style={{ color: '#64748b' }}>Rate</span>
+                        <span className="stat-label" style={{ color: 'var(--color-muted)' }}>Rate</span>
                         <span style={{ color: barColor }}>{dp.rate}%</span>
                       </div>
-                      <div style={{ height: '4px', background: '#f1f5f9', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div className="progress-container">
                         <div style={{ width: `${dp.rate}%`, height: '100%', background: barColor, borderRadius: '2px', transition: 'width 0.3s ease' }}></div>
                       </div>
                     </div>
@@ -439,41 +728,29 @@ function ExecutiveMonitor({ user, complaints }) {
                 <div 
                   key={dp.name} 
                   className="monitor-card"
-                  style={{
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '12px',
-                    padding: '14px',
-                    background: '#ffffff',
-                    boxShadow: 'var(--shadow-sm)',
-                    transition: 'all 0.2s ease',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    gap: '10px',
-                  }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: '700', fontSize: '0.9rem', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dp.name}</span>
-                    <span className="pill" style={{ background: '#f1f5f9', color: '#64748b', fontSize: '0.7rem', padding: '2px 6px', fontWeight: 'bold' }}>{dp.total} Total</span>
+                    <span className="dept-name" style={{ fontWeight: '700', fontSize: '0.9rem', color: 'var(--color-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dp.name}</span>
+                    <span className="pill" style={{ fontSize: '0.7rem', padding: '2px 6px', fontWeight: 'bold' }}>{dp.total} Total</span>
                   </div>
                   
                   <div style={{ display: 'flex', gap: '16px', fontSize: '0.8rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ color: '#dc2626', fontWeight: '700', fontSize: '1rem' }}>{dp.active}</span>
-                      <span style={{ fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase' }}>Active</span>
+                      <span style={{ color: '#ef4444', fontWeight: '700', fontSize: '1rem' }}>{dp.active}</span>
+                      <span className="stat-label" style={{ fontSize: '0.68rem', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Active</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ color: '#16a34a', fontWeight: '700', fontSize: '1rem' }}>{dp.resolved}</span>
-                      <span style={{ fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase' }}>Resolved</span>
+                      <span style={{ color: '#10b981', fontWeight: '700', fontSize: '1rem' }}>{dp.resolved}</span>
+                      <span className="stat-label" style={{ fontSize: '0.68rem', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Resolved</span>
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', fontWeight: '600' }}>
-                      <span style={{ color: '#64748b' }}>Resolved Rate</span>
+                      <span className="stat-label" style={{ color: 'var(--color-muted)' }}>Resolved Rate</span>
                       <span style={{ color: barColor }}>{dp.rate}%</span>
                     </div>
-                    <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div className="progress-container">
                       <div style={{ width: `${dp.rate}%`, height: '100%', background: barColor, borderRadius: '3px', transition: 'width 0.3s ease' }}></div>
                     </div>
                   </div>
@@ -788,13 +1065,15 @@ function App() {
   const [notice, setNotice] = useState(null);
   const [form, setForm] = useState({
     text: 'Water pipe is leaking near the bus stop and flooding the lane.',
-    place: 'Metro Gate 12',
-    state: 'Delhi',
-    lat: '28.6141',
-    lng: '77.2092',
+    place: '',
+    state: '',
+    lat: '',
+    lng: '',
     voice_transcript: '',
   });
   const [expandedComplaintId, setExpandedComplaintId] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [analyzingImage, setAnalyzingImage] = useState(false);
   const [resolvingId, setResolvingId] = useState(null);
   const [commentingId, setCommentingId] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -1036,9 +1315,41 @@ function App() {
     setNotice(null);
   }
 
+  async function analyzeImageAndPopulate(file) {
+    if (!session?.token) return;
+    setAnalyzingImage(true);
+    setNotice({ type: 'info', text: 'Analyzing image with Gen AI to extract complaint details...' });
+    try {
+      const payload = new FormData();
+      payload.append('photo', file);
+      
+      const res = await fetch(`${API_BASE}/ai/analyze-image`, {
+        method: 'POST',
+        headers: authHeaders(session.token),
+        body: payload,
+      });
+      
+      if (!res.ok) {
+        throw new Error('Image analysis failed.');
+      }
+      
+      const data = await res.json();
+      if (data.description) {
+        setForm(prev => ({ ...prev, text: data.description }));
+        setNotice({ type: 'success', text: 'Gen AI populated complaint box successfully!' });
+      }
+    } catch (error) {
+      console.error(error);
+      setNotice({ type: 'error', text: 'Failed to auto-populate complaint from image.' });
+    } finally {
+      setAnalyzingImage(false);
+    }
+  }
+
   async function submitComplaint(event) {
     event.preventDefault();
-    const formElements = event.currentTarget.elements;
+    const formEl = event.currentTarget;
+    const formElements = formEl.elements;
     setLoading(true);
     setNotice(null);
     try {
@@ -1071,6 +1382,16 @@ function App() {
         throw new Error(detail || 'Complaint could not be submitted.');
       }
       await refresh();
+      setSelectedFile(null);
+      setForm({
+        text: '',
+        place: '',
+        state: '',
+        lat: '',
+        lng: '',
+        voice_transcript: '',
+      });
+      formEl.reset();
       setNotice({ type: 'success', text: 'Complaint classified and routed.' });
     } catch (error) {
       setNotice({
@@ -1296,6 +1617,8 @@ function App() {
       </section>
       {notice && <div className={`notice ${notice.type}`}>{notice.text}</div>}
 
+      <AnalyticsDashboard user={session.user} complaints={complaints} />
+
       <section className="workspace">
         {session.user.user_type === 'Admin' ? (
           <AdminPanel token={session.token} user={session.user} complaints={complaints} refresh={refresh} />
@@ -1406,10 +1729,33 @@ function App() {
                 </button>
               </div>
             </label>
-            <label className="fileInput">
-              <Upload size={18} />
-              <span>Attach photo</span>
-              <input name="photo" type="file" accept="image/*" />
+            <label className="fileInput" style={{ cursor: analyzingImage ? 'not-allowed' : 'pointer', opacity: analyzingImage ? 0.7 : 1 }}>
+              {analyzingImage ? (
+                <RefreshCw size={18} className="spin" />
+              ) : (
+                <Upload size={18} />
+              )}
+              <span>
+                {analyzingImage 
+                  ? 'AI analyzing image...' 
+                  : selectedFile 
+                    ? `Selected: ${selectedFile.name}` 
+                    : 'Attach photo'
+                }
+              </span>
+              <input 
+                name="photo" 
+                type="file" 
+                accept="image/*" 
+                disabled={analyzingImage}
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  setSelectedFile(file || null);
+                  if (file) {
+                    analyzeImageAndPopulate(file);
+                  }
+                }}
+              />
             </label>
             <button className="primary" disabled={loading}>
               <Send size={18} />
@@ -1472,10 +1818,6 @@ function App() {
                     {isExpanded && (
                       <div className="complaint-detail-expansion" style={{
                         padding: '20px',
-                        background: '#f8fafc',
-                        borderLeft: '4px solid #246bfe',
-                        borderBottom: '1px solid #cbd8d5',
-                        borderRight: '1px solid #cbd8d5',
                         borderBottomLeftRadius: '8px',
                         borderBottomRightRadius: '8px',
                         marginTop: '-4px',
@@ -1486,33 +1828,33 @@ function App() {
                       }} onClick={(e) => e.stopPropagation()}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                           <div>
-                            <h4 style={{ margin: '0 0 6px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Full Grievance Text</h4>
-                            <p style={{ margin: 0, fontSize: '0.95rem', color: '#17202a', whiteSpace: 'pre-wrap' }}>{complaint.text}</p>
+                            <h4 style={{ margin: '0 0 6px', fontSize: '0.85rem', textTransform: 'uppercase' }}>Full Grievance Text</h4>
+                            <p style={{ margin: 0, fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}>{complaint.text}</p>
                             
                             {complaint.voice_transcript && (
-                              <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eef2f6', borderRadius: '8px', borderLeft: '3px solid #64748b' }}>
-                                <h5 style={{ margin: '0 0 4px', fontSize: '0.8rem', color: '#475569' }}>🎙️ Voice Transcript</h5>
-                                <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155', fontStyle: 'italic' }}>"{complaint.voice_transcript}"</p>
+                              <div className="voice-transcript-box" style={{ marginTop: '12px' }}>
+                                <h5 style={{ margin: '0 0 4px', fontSize: '0.8rem' }}>🎙️ Voice Transcript</h5>
+                                <p style={{ margin: 0, fontSize: '0.9rem', fontStyle: 'italic' }}>"{complaint.voice_transcript}"</p>
                               </div>
                             )}
                           </div>
                           
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
                             <div>
-                              <h4 style={{ margin: '0 0 4px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Reporter Details</h4>
+                              <h4 style={{ margin: '0 0 4px', fontSize: '0.85rem', textTransform: 'uppercase' }}>Reporter Details</h4>
                               <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Name:</strong> {complaint.reporter_name || 'Anonymous'} ({complaint.reporter_username || 'citizen'})</span>
                               {complaint.contact && <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Contact:</strong> {complaint.contact}</span>}
                               <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Date Filed:</strong> {new Date(complaint.created_at).toLocaleString()}</span>
                             </div>
                             
                             <div>
-                              <h4 style={{ margin: '0 0 4px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>AI Classification Info</h4>
+                              <h4 style={{ margin: '0 0 4px', fontSize: '0.85rem', textTransform: 'uppercase' }}>AI Classification Info</h4>
                               <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Assigned Department:</strong> {complaint.classification.department}</span>
                               <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>AI Confidence:</strong> {(complaint.classification.confidence * 100).toFixed(0)}%</span>
                               {complaint.classification.tags && complaint.classification.tags.length > 0 && (
                                 <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '6px' }}>
                                   {complaint.classification.tags.map(tag => (
-                                    <span key={tag} style={{ padding: '2px 6px', background: '#e2e8f0', borderRadius: '4px', fontSize: '0.75rem', color: '#475569' }}>#{tag}</span>
+                                    <span key={tag} className="tag-badge">#{tag}</span>
                                   ))}
                                 </div>
                               )}
@@ -1694,12 +2036,8 @@ function App() {
                     </article>
                     
                     {isExpanded && (
-                      <div className="complaint-detail-expansion" style={{
+                      <div className="complaint-detail-expansion resolved-expansion" style={{
                         padding: '20px',
-                        background: '#f8fafc',
-                        borderLeft: '4px solid #10b981',
-                        borderBottom: '1px solid #cbd8d5',
-                        borderRight: '1px solid #cbd8d5',
                         borderBottomLeftRadius: '8px',
                         borderBottomRightRadius: '8px',
                         marginTop: '-4px',
@@ -1710,27 +2048,27 @@ function App() {
                       }} onClick={(e) => e.stopPropagation()}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                           <div>
-                            <h4 style={{ margin: '0 0 6px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Full Grievance Text</h4>
-                            <p style={{ margin: 0, fontSize: '0.95rem', color: '#17202a', whiteSpace: 'pre-wrap' }}>{complaint.text}</p>
+                            <h4 style={{ margin: '0 0 6px', fontSize: '0.85rem', textTransform: 'uppercase' }}>Full Grievance Text</h4>
+                            <p style={{ margin: 0, fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}>{complaint.text}</p>
                             
                             {complaint.voice_transcript && (
-                              <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eef2f6', borderRadius: '8px', borderLeft: '3px solid #64748b' }}>
-                                <h5 style={{ margin: '0 0 4px', fontSize: '0.8rem', color: '#475569' }}>🎙️ Voice Transcript</h5>
-                                <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155', fontStyle: 'italic' }}>"{complaint.voice_transcript}"</p>
+                              <div className="voice-transcript-box" style={{ marginTop: '12px' }}>
+                                <h5 style={{ margin: '0 0 4px', fontSize: '0.8rem' }}>🎙️ Voice Transcript</h5>
+                                <p style={{ margin: 0, fontSize: '0.9rem', fontStyle: 'italic' }}>"{complaint.voice_transcript}"</p>
                               </div>
                             )}
                           </div>
                           
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
                             <div>
-                              <h4 style={{ margin: '0 0 4px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Reporter Details</h4>
+                              <h4 style={{ margin: '0 0 4px', fontSize: '0.85rem', textTransform: 'uppercase' }}>Reporter Details</h4>
                               <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Name:</strong> {complaint.reporter_name || 'Anonymous'} ({complaint.reporter_username || 'citizen'})</span>
                               {complaint.contact && <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Contact:</strong> {complaint.contact}</span>}
                               <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Date Filed:</strong> {new Date(complaint.created_at).toLocaleString()}</span>
                             </div>
                             
                             <div>
-                              <h4 style={{ margin: '0 0 4px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>AI Classification Info</h4>
+                              <h4 style={{ margin: '0 0 4px', fontSize: '0.85rem', textTransform: 'uppercase' }}>AI Classification Info</h4>
                               <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>Assigned Department:</strong> {complaint.classification.department}</span>
                               <span style={{ fontSize: '0.9rem', display: 'block' }}><strong>AI Confidence:</strong> {(complaint.classification.confidence * 100).toFixed(0)}%</span>
                             </div>
@@ -1738,15 +2076,15 @@ function App() {
                           <ComplaintTimeline complaint={complaint} />
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: complaint.photo_filename || complaint.resolution_photo_filename ? '1fr 1fr' : '1fr', gap: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: complaint.photo_filename || complaint.resolution_photo_filename ? '1fr 1fr' : '1fr', gap: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
                           {complaint.photo_filename && (
                             <div>
-                              <h4 style={{ margin: '0 0 8px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Original Evidence Photo</h4>
+                              <h4 style={{ margin: '0 0 8px', fontSize: '0.85rem', textTransform: 'uppercase' }}>Original Evidence Photo</h4>
                               <a href={`${API_BASE}/uploads/${complaint.photo_filename}`} target="_blank" rel="noreferrer">
                                 <img 
                                   src={`${API_BASE}/uploads/${complaint.photo_filename}`} 
                                   alt="Evidence Photo" 
-                                  style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px', border: '1px solid #cbd8d5', objectFit: 'cover' }} 
+                                  style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px', border: '1px solid var(--border-color)', objectFit: 'cover' }} 
                                 />
                               </a>
                             </div>
@@ -1880,6 +2218,30 @@ function App() {
 }
 
 function AuthScreen({ mode, setMode, form, setForm, loading, notice, onSubmit }) {
+  const [countryCode, setCountryCode] = useState('+91');
+  const [phoneDigits, setPhoneDigits] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const countries = [
+    { code: '+91', flag: 'https://flagcdn.com/w40/in.png', label: 'IN' },
+    { code: '+1', flag: 'https://flagcdn.com/w40/us.png', label: 'US' },
+    { code: '+44', flag: 'https://flagcdn.com/w40/gb.png', label: 'UK' },
+    { code: '+61', flag: 'https://flagcdn.com/w40/au.png', label: 'AU' },
+    { code: '+971', flag: 'https://flagcdn.com/w40/ae.png', label: 'AE' },
+    { code: '+65', flag: 'https://flagcdn.com/w40/sg.png', label: 'SG' },
+    { code: '+81', flag: 'https://flagcdn.com/w40/jp.png', label: 'JP' },
+    { code: '+49', flag: 'https://flagcdn.com/w40/de.png', label: 'DE' },
+    { code: '+33', flag: 'https://flagcdn.com/w40/fr.png', label: 'FR' },
+  ];
+
+  const currentCountry = countries.find(c => c.code === countryCode) || countries[0];
+
+  useEffect(() => {
+    if (mode === 'register') {
+      setForm(f => ({ ...f, phone: countryCode + phoneDigits }));
+    }
+  }, [countryCode, phoneDigits, mode, setForm]);
+
   return (
     <main className="authShell">
       <section className="authPanel">
@@ -1966,12 +2328,103 @@ function AuthScreen({ mode, setMode, form, setForm, loading, notice, onSubmit })
               </label>
               <label>
                 Phone number
-                <input
-                  value={form.phone}
-                  onChange={(event) => setForm({ ...form, phone: event.target.value })}
-                  autoComplete="tel"
-                  required
-                />
+                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                  <div style={{ position: 'relative', width: '110px' }}>
+                    <div 
+                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '6px',
+                        padding: '11px 10px',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: 'var(--radius-input)',
+                        background: 'var(--bg-input)',
+                        color: 'var(--color-main)',
+                        cursor: 'pointer',
+                        height: '100%',
+                        boxSizing: 'border-box',
+                        userSelect: 'none'
+                      }}
+                    >
+                      <img src={currentCountry.flag} alt={currentCountry.label} style={{ width: '22px', height: '14px', objectFit: 'cover', borderRadius: '2px' }} />
+                      <span style={{ fontSize: '0.85rem' }}>{currentCountry.code}</span>
+                      <span style={{ fontSize: '0.6rem', opacity: 0.7 }}>▼</span>
+                    </div>
+
+                    {isDropdownOpen && (
+                      <div 
+                        onClick={() => setIsDropdownOpen(false)}
+                        style={{
+                          position: 'fixed',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          zIndex: 99,
+                          background: 'transparent'
+                        }}
+                      />
+                    )}
+                    
+                    {isDropdownOpen && (
+                      <div style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 4px)',
+                        left: 0,
+                        width: '160px',
+                        background: 'var(--bg-panel-solid, #0d142a)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: 'var(--radius-input)',
+                        boxShadow: 'var(--shadow-lg)',
+                        zIndex: 100,
+                        maxHeight: '180px',
+                        overflowY: 'auto',
+                        padding: '4px'
+                      }}>
+                        {countries.map(c => (
+                          <div
+                            key={c.code}
+                            onClick={() => {
+                              setCountryCode(c.code);
+                              setIsDropdownOpen(false);
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              padding: '8px 10px',
+                              cursor: 'pointer',
+                              borderRadius: '4px',
+                              color: 'var(--color-main)',
+                              fontSize: '0.85rem',
+                              transition: 'background 0.2s ease',
+                            }}
+                            className="custom-select-option"
+                          >
+                            <img src={c.flag} alt={c.label} style={{ width: '22px', height: '14px', objectFit: 'cover', borderRadius: '2px' }} />
+                            <span>{c.code} ({c.label})</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="tel"
+                    value={phoneDigits}
+                    onChange={(event) => {
+                      const val = event.target.value.replace(/\D/g, '').slice(0, 10);
+                      setPhoneDigits(val);
+                    }}
+                    placeholder="10-digit number"
+                    pattern="\d{10}"
+                    title="Please enter a valid 10-digit phone number"
+                    autoComplete="tel"
+                    required
+                    style={{ flex: 1 }}
+                  />
+                </div>
               </label>
             </>
           )}

@@ -96,6 +96,45 @@ async def me(current_user: User = Depends(get_current_user)) -> UserPublic:
     return UserPublic(**current_user.model_dump(exclude={"password_hash"}))
 
 
+@app.post("/ai/analyze-image")
+async def analyze_image(
+    photo: UploadFile = File(...),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, str]:
+    if not settings.google_api_key:
+        return {"description": "Upload successful. (Gemini API Key not configured for auto-description)"}
+        
+    try:
+        import google.generativeai as genai
+
+        photo_bytes = await photo.read()
+        genai.configure(api_key=settings.google_api_key)
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        
+        prompt = (
+            "Describe the civic grievance, municipal issue, infrastructure damage, or public disturbance shown in this image. "
+            "Act as a citizen reporting this issue to their local municipal corporation. "
+            "Write a concise, professional description of 1 to 3 sentences detailing the problem (e.g. 'A deep pothole has formed on the road lane, filled with rain water and causing vehicle hazards. It needs urgent paving.'). "
+            "Return only the plain description text without any markdown or conversational filler."
+        )
+        
+        payload = [
+            prompt,
+            {
+                "mime_type": photo.content_type or "image/jpeg",
+                "data": photo_bytes,
+            }
+        ]
+        
+        response = await model.generate_content_async(payload)
+        description = response.text.strip()
+        
+        return {"description": description}
+    except Exception as e:
+        return {"description": f"Failed to auto-describe image: {str(e)}"}
+
+
+
 @app.post("/complaints", response_model=Complaint)
 async def create_complaint(
     text: str = Form(...),
