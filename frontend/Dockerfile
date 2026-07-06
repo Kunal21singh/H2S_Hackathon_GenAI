@@ -16,5 +16,5 @@ FROM nginx:stable-alpine as production-stage
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
-CMD ["/bin/sh", "-c", "if [ ! -z \"$VITE_API_BASE\" ]; then find /usr/share/nginx/html/assets -name \"*.js\" -exec sed -i \"s|http://localhost:8000|$VITE_API_BASE|g\" {} \\;; fi && nginx -g \"daemon off;\""]
+CMD ["/bin/sh", "-c", "sed -i \"s|PORT_PLACEHOLDER|${PORT:-80}|g\" /etc/nginx/conf.d/default.conf && sed -i \"s|http://localhost:8000|${VITE_API_BASE}|g\" /usr/share/nginx/html/assets/*.js 2>/dev/null || true; nginx -g \"daemon off;\""]
 

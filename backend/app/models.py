@@ -126,6 +126,7 @@ class UserPublic(BaseModel):
     phone: str
     user_type: str = "Citizen"
     state: str | None = None
+    telegram_chat_id: str | None = None
     is_active: bool
     created_at: datetime
 
@@ -141,6 +142,7 @@ class UserRegister(BaseModel):
     password: str = Field(min_length=6, max_length=128)
     user_type: str = "Citizen"
     state: str | None = None
+    telegram_chat_id: str | None = None
 
 
 class UserLogin(BaseModel):
@@ -177,6 +179,11 @@ class AnalyticsAnswer(BaseModel):
 
 class CommentCreate(BaseModel):
     comment: str
+
+
+class ComplaintTransfer(BaseModel):
+    new_department: str
+    reason: str
 
 
 class AdminComplaintUpdate(BaseModel):

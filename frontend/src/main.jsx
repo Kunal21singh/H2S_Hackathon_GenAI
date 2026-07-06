@@ -587,7 +587,7 @@ function ExecutiveMonitor({ user, complaints }) {
         <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
           Select a state below to view department-level grievance performance.
         </p>
-        <div style={{ flex: '1 1 auto', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', minHeight: '180px', padding: '4px' }}>
+        <div style={{ flex: '1 1 auto', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', alignContent: 'start', minHeight: '180px', padding: '4px' }}>
           {statesList.length === 0 ? (
             <p className="muted" style={{ padding: '20px', gridColumn: '1 / -1', textAlign: 'center' }}>No state data found.</p>
           ) : (
@@ -644,7 +644,7 @@ function ExecutiveMonitor({ user, complaints }) {
                 Clear Selection
               </button>
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', maxHeight: '200px', overflowY: 'auto', padding: '4px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', alignContent: 'start', maxHeight: '200px', overflowY: 'auto', padding: '4px' }}>
               {drillDownList.map((dp) => {
                 const barColor = '#16a34a';
                 
@@ -717,7 +717,7 @@ function ExecutiveMonitor({ user, complaints }) {
         <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
           Administrative performance monitoring for departments within <strong>{userState}</strong>.
         </p>
-        <div style={{ flex: '1 1 auto', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', minHeight: '260px', padding: '4px' }}>
+        <div style={{ flex: '1 1 auto', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', alignContent: 'start', minHeight: '260px', padding: '4px' }}>
           {deptsList.length === 0 ? (
             <p className="muted" style={{ padding: '20px', gridColumn: '1 / -1', textAlign: 'center' }}>No department data found.</p>
           ) : (
@@ -1054,6 +1054,7 @@ function App() {
     phone: '',
     user_type: 'Citizen',
     state: '',
+    telegram_chat_id: '',
   });
   const [complaints, setComplaints] = useState([]);
   const [hotspots, setHotspots] = useState([]);
@@ -1076,6 +1077,7 @@ function App() {
   const [analyzingImage, setAnalyzingImage] = useState(false);
   const [resolvingId, setResolvingId] = useState(null);
   const [commentingId, setCommentingId] = useState(null);
+  const [transferringId, setTransferringId] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAnalyticsPopup, setShowAnalyticsPopup] = useState(false);
@@ -1276,6 +1278,21 @@ function App() {
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
     refresh().catch(console.error);
   }, [session?.token]);
+
+  useEffect(() => {
+    if (complaints.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const trackId = params.get('track');
+    if (trackId && complaints.some(c => c.id === trackId)) {
+      setExpandedComplaintId(trackId);
+      setTimeout(() => {
+        const el = document.getElementById(`complaint-${trackId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 600);
+    }
+  }, [complaints]);
 
   async function handleAuth(event) {
     event.preventDefault();
@@ -1479,6 +1496,47 @@ function App() {
       setNotice({ type: 'error', text: error.message || 'Error resolving complaint.' });
     } finally {
       setResolvingId(null);
+    }
+  }
+
+  async function transferComplaint(event, complaintId) {
+    event.preventDefault();
+    const formEl = event.currentTarget;
+    const deptSelect = formEl.elements.namedItem('transfer_dept');
+    const reasonInput = formEl.elements.namedItem('transfer_reason');
+    const new_department = deptSelect?.value;
+    const reason = reasonInput?.value;
+
+    if (!new_department || !reason?.trim()) {
+      alert("Please select a department and enter a reason.");
+      return;
+    }
+
+    setTransferringId(complaintId);
+    setNotice(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/complaints/${complaintId}/transfer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders(session.token)
+        },
+        body: JSON.stringify({ new_department, reason })
+      });
+
+      if (!res.ok) {
+        const detail = await readError(res);
+        throw new Error(detail || 'Could not transfer complaint.');
+      }
+
+      setNotice({ type: 'success', text: `Grievance transferred to ${new_department} successfully.` });
+      await refresh();
+      setExpandedComplaintId(null);
+    } catch (error) {
+      setNotice({ type: 'error', text: error.message || 'Error transferring complaint.' });
+    } finally {
+      setTransferringId(null);
     }
   }
 
@@ -1799,6 +1857,7 @@ function App() {
                 return (
                   <React.Fragment key={complaint.id}>
                     <article 
+                      id={`complaint-${complaint.id}`}
                       className={`row ${isExpanded ? 'expanded-row' : ''}`} 
                       onClick={() => setExpandedComplaintId(isExpanded ? null : complaint.id)}
                       style={{ cursor: 'pointer', transition: 'background-color 0.2s ease' }}
@@ -1900,8 +1959,8 @@ function App() {
                           {!['Citizen', 'Chief Minister', 'Prime Minister'].includes(session.user.user_type || 'Citizen') && complaint.status !== 'resolved' && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
                               {/* Add Update Comment Form */}
-                              <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '16px' }}>
-                                <h4 style={{ margin: '0 0 8px', color: '#475569', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase' }}>Add Progress Update</h4>
+                              <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '16px' }}>
+                                <h4 style={{ margin: '0 0 8px', color: 'var(--color-primary-hover)', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase' }}>Add Progress Update</h4>
                                 <form onSubmit={(e) => addProgressComment(e, complaint.id)} style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}>
                                   <input 
                                     name="comment_text" 
@@ -1913,8 +1972,10 @@ function App() {
                                       minWidth: '0', 
                                       padding: '8px 12px', 
                                       fontSize: '0.85rem', 
-                                      border: '1px solid #cbd8d5', 
+                                      border: '1px solid var(--border-color)', 
                                       borderRadius: '6px',
+                                      background: 'var(--bg-input)',
+                                      color: 'var(--color-main)',
                                       height: '38px',
                                       boxSizing: 'border-box'
                                     }}
@@ -1943,17 +2004,21 @@ function App() {
                               </div>
 
                               {/* Resolve Form */}
-                              <div style={{ background: '#f0fdf4', border: '1px dashed #86efac', borderRadius: '8px', padding: '16px' }}>
-                                <h4 style={{ margin: '0 0 8px', color: '#166534', fontSize: '0.9rem', fontWeight: 'bold' }}>Action Required: Resolve</h4>
+                              <div style={{ background: 'rgba(16, 185, 129, 0.04)', border: '1px dashed rgba(16, 185, 129, 0.3)', borderRadius: '8px', padding: '16px', width: '100%' }}>
+                                <h4 style={{ margin: '0 0 8px', color: '#10b981', fontSize: '0.9rem', fontWeight: 'bold' }}>Action Required: Resolve</h4>
                                 <form onSubmit={(e) => resolveComplaint(e, complaint.id)} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                  <label style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }}>
-                                    <span>Attach Repair Photo Proof:</span>
+                                  <label style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '6px', cursor: 'pointer', color: 'var(--color-main)' }}>
+                                    <span style={{ fontWeight: '600' }}>Attach Repair Photo Proof:</span>
                                     <input 
                                       name="resolution_photo" 
                                       type="file" 
                                       accept="image/*" 
                                       required 
-                                      style={{ fontSize: '0.85rem' }} 
+                                      style={{ 
+                                        fontSize: '0.85rem',
+                                        color: 'var(--color-muted)',
+                                        padding: '4px 0'
+                                      }} 
                                     />
                                   </label>
                                   <button 
@@ -1962,7 +2027,7 @@ function App() {
                                     disabled={resolvingId === complaint.id}
                                     style={{ 
                                       padding: '8px 12px', 
-                                      background: '#166534', 
+                                      background: '#10b981', 
                                       color: '#ffffff', 
                                       border: 'none', 
                                       borderRadius: '6px', 
@@ -1972,7 +2037,8 @@ function App() {
                                       justifyContent: 'center',
                                       gap: '6px',
                                       fontWeight: 'bold',
-                                      fontSize: '0.85rem'
+                                      fontSize: '0.85rem',
+                                      transition: 'background 0.2s'
                                     }}
                                   >
                                     {resolvingId === complaint.id ? (
@@ -1981,6 +2047,103 @@ function App() {
                                       <CheckCircle2 size={14} />
                                     )}
                                     {resolvingId === complaint.id ? 'Saving Proof...' : 'Resolve Complaint'}
+                                  </button>
+                                </form>
+                              </div>
+
+                              {/* Transfer Department Form */}
+                              <div style={{ background: 'rgba(59, 130, 246, 0.04)', border: '1px dashed rgba(59, 130, 246, 0.3)', borderRadius: '8px', padding: '16px', width: '100%' }}>
+                                <h4 style={{ margin: '0 0 8px', color: '#3b82f6', fontSize: '0.9rem', fontWeight: 'bold' }}>Transfer Grievance to another Department</h4>
+                                <form onSubmit={(e) => transferComplaint(e, complaint.id)} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                  <label style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px', color: 'var(--color-main)' }}>
+                                    <span style={{ fontWeight: '600' }}>Select Destination Department:</span>
+                                    <select 
+                                      name="transfer_dept" 
+                                      required
+                                      style={{
+                                        width: '100%',
+                                        padding: '8px 10px',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: 'var(--radius-input)',
+                                        background: 'var(--bg-input)',
+                                        color: 'var(--color-main)',
+                                        fontSize: '0.85rem',
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      <option value="Department of Agriculture">Department of Agriculture</option>
+                                      <option value="Department of Environment">Department of Environment</option>
+                                      <option value="Department of Finance">Department of Finance</option>
+                                      <option value="Department of Fisheries">Department of Fisheries</option>
+                                      <option value="Department of Forests">Department of Forests</option>
+                                      <option value="Department of Home and Hill Affairs">Department of Home and Hill Affairs</option>
+                                      <option value="Department of Information Technology and Electronics">Department of Information Technology and Electronics</option>
+                                      <option value="Department of Law">Department of Law</option>
+                                      <option value="Department of Parliamentary Affairs">Department of Parliamentary Affairs</option>
+                                      <option value="Department of Power">Department of Power</option>
+                                      <option value="Department of Public Enterprises & Industrial Reconstruction">Department of Public Enterprises & Industrial Reconstruction</option>
+                                      <option value="Department of Public Works">Department of Public Works</option>
+                                      <option value="Department of School Education">Department of School Education</option>
+                                      <option value="Department of Sundarban Affairs">Department of Sundarban Affairs</option>
+                                      <option value="Department of Technical Education, Training and Skill Development">Department of Technical Education, Training and Skill Development</option>
+                                      <option value="Department of Transport">Department of Transport</option>
+                                      <option value="Department of Urban Development and Municipal Affairs">Department of Urban Development and Municipal Affairs</option>
+                                      <option value="Department of Industry, Commerce & Enterprises">Department of Industry, Commerce & Enterprises</option>
+                                      <option value="Department of Health & Family Welfare">Department of Health & Family Welfare</option>
+                                      <option value="Department of Information & Cultural Affairs">Department of Information & Cultural Affairs</option>
+                                      <option value="Department of Labour">Department of Labour</option>
+                                      <option value="Department of Land & Land Reforms">Department of Land & Land Reforms</option>
+                                      <option value="Department of Minority Affairs & Madrasah Education">Department of Minority Affairs & Madrasah Education</option>
+                                      <option value="Department of North Bengal Development">Department of North Bengal Development</option>
+                                      <option value="Department of Personnel & Administrative Reforms">Department of Personnel & Administrative Reforms</option>
+                                      <option value="Department of Tourism">Department of Tourism</option>
+                                      <option value="Department of Women and Child Development and Social Welfare">Department of Women and Child Development and Social Welfare</option>
+                                    </select>
+                                  </label>
+                                  <label style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px', color: 'var(--color-main)' }}>
+                                    <span style={{ fontWeight: '600' }}>Reason for Transfer:</span>
+                                    <input 
+                                      name="transfer_reason" 
+                                      type="text" 
+                                      placeholder="e.g. Work completed here / Misclassified grievance / Needs joint action..." 
+                                      required
+                                      style={{
+                                        width: '100%',
+                                        padding: '8px 10px',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: 'var(--radius-input)',
+                                        background: 'var(--bg-input)',
+                                        color: 'var(--color-main)',
+                                        fontSize: '0.85rem'
+                                      }}
+                                    />
+                                  </label>
+                                  <button 
+                                    type="submit" 
+                                    className="primary" 
+                                    disabled={transferringId === complaint.id}
+                                    style={{ 
+                                      padding: '8px 12px', 
+                                      background: '#3b82f6', 
+                                      color: '#ffffff', 
+                                      border: 'none', 
+                                      borderRadius: '6px', 
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '6px',
+                                      fontWeight: 'bold',
+                                      fontSize: '0.85rem',
+                                      transition: 'background 0.2s'
+                                    }}
+                                  >
+                                    {transferringId === complaint.id ? (
+                                      <RefreshCw className="spin" size={14} />
+                                    ) : (
+                                      <Send size={14} />
+                                    )}
+                                    {transferringId === complaint.id ? 'Transferring...' : 'Transfer Grievance'}
                                   </button>
                                 </form>
                               </div>
@@ -2019,6 +2182,7 @@ function App() {
                 return (
                   <React.Fragment key={complaint.id}>
                     <article 
+                      id={`complaint-${complaint.id}`}
                       className={`row resolved-row ${isExpanded ? 'expanded-row' : ''}`} 
                       onClick={() => setExpandedComplaintId(isExpanded ? null : complaint.id)}
                       style={{ cursor: 'pointer', transition: 'background-color 0.2s ease' }}
@@ -2236,11 +2400,24 @@ function AuthScreen({ mode, setMode, form, setForm, loading, notice, onSubmit })
 
   const currentCountry = countries.find(c => c.code === countryCode) || countries[0];
 
+  const [roleType, setRoleType] = useState('Citizen');
+  const [deptName, setDeptName] = useState('Department of Urban Development and Municipal Affairs');
+
   useEffect(() => {
     if (mode === 'register') {
       setForm(f => ({ ...f, phone: countryCode + phoneDigits }));
     }
   }, [countryCode, phoneDigits, mode, setForm]);
+
+  useEffect(() => {
+    if (mode === 'register') {
+      if (roleType === 'Officer') {
+        setForm(f => ({ ...f, user_type: `${deptName} Officer` }));
+      } else {
+        setForm(f => ({ ...f, user_type: roleType }));
+      }
+    }
+  }, [roleType, deptName, mode, setForm]);
 
   return (
     <main className="authShell">
@@ -2273,18 +2450,18 @@ function AuthScreen({ mode, setMode, form, setForm, loading, notice, onSubmit })
           {mode === 'register' && (
             <>
               <label>
-                User Type / Department
+                User Type / Role
                 <select
-                  value={form.user_type || 'Citizen'}
-                  onChange={(event) => setForm({ ...form, user_type: event.target.value })}
+                  value={roleType}
+                  onChange={(event) => setRoleType(event.target.value)}
                   required
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    border: '1px solid #cbd8d5',
-                    borderRadius: '8px',
-                    background: '#fbfdfc',
-                    color: '#17202a',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-input)',
+                    background: 'var(--bg-input)',
+                    color: 'var(--color-main)',
                     fontSize: '1rem',
                     marginTop: '4px',
                     marginBottom: '12px',
@@ -2292,17 +2469,65 @@ function AuthScreen({ mode, setMode, form, setForm, loading, notice, onSubmit })
                   }}
                 >
                   <option value="Citizen">Citizen (General Public)</option>
-                  <option value="Water department">Water Department</option>
-                  <option value="Fire Department">Fire Department</option>
-                  <option value="Road Department">Road Department</option>
-                  <option value="Sanitation department">Sanitation Department</option>
-                  <option value="Electrical department">Electrical Department</option>
+                  <option value="Officer">Department Officer</option>
                   <option value="Chief Minister">Chief Minister (State Head)</option>
                   <option value="Prime Minister">Prime Minister (Country Head)</option>
                   <option value="Admin">System Administrator (Control Panel)</option>
                 </select>
               </label>
-              {form.user_type !== 'Citizen' && form.user_type !== 'Prime Minister' && form.user_type !== 'Admin' && (
+
+              {roleType === 'Officer' && (
+                <label>
+                  Assigned Department (Matches AI Classification)
+                  <select
+                    value={deptName}
+                    onChange={(event) => setDeptName(event.target.value)}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-input)',
+                      background: 'var(--bg-input)',
+                      color: 'var(--color-main)',
+                      fontSize: '1rem',
+                      marginTop: '4px',
+                      marginBottom: '12px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="Department of Agriculture">Department of Agriculture</option>
+                    <option value="Department of Environment">Department of Environment</option>
+                    <option value="Department of Finance">Department of Finance</option>
+                    <option value="Department of Fisheries">Department of Fisheries</option>
+                    <option value="Department of Forests">Department of Forests</option>
+                    <option value="Department of Home and Hill Affairs">Department of Home and Hill Affairs</option>
+                    <option value="Department of Information Technology and Electronics">Department of Information Technology and Electronics</option>
+                    <option value="Department of Law">Department of Law</option>
+                    <option value="Department of Parliamentary Affairs">Department of Parliamentary Affairs</option>
+                    <option value="Department of Power">Department of Power</option>
+                    <option value="Department of Public Enterprises & Industrial Reconstruction">Department of Public Enterprises & Industrial Reconstruction</option>
+                    <option value="Department of Public Works">Department of Public Works</option>
+                    <option value="Department of School Education">Department of School Education</option>
+                    <option value="Department of Sundarban Affairs">Department of Sundarban Affairs</option>
+                    <option value="Department of Technical Education, Training and Skill Development">Department of Technical Education, Training and Skill Development</option>
+                    <option value="Department of Transport">Department of Transport</option>
+                    <option value="Department of Urban Development and Municipal Affairs">Department of Urban Development and Municipal Affairs</option>
+                    <option value="Department of Industry, Commerce & Enterprises">Department of Industry, Commerce & Enterprises</option>
+                    <option value="Department of Health & Family Welfare">Department of Health & Family Welfare</option>
+                    <option value="Department of Information & Cultural Affairs">Department of Information & Cultural Affairs</option>
+                    <option value="Department of Labour">Department of Labour</option>
+                    <option value="Department of Land & Land Reforms">Department of Land & Land Reforms</option>
+                    <option value="Department of Minority Affairs & Madrasah Education">Department of Minority Affairs & Madrasah Education</option>
+                    <option value="Department of North Bengal Development">Department of North Bengal Development</option>
+                    <option value="Department of Personnel & Administrative Reforms">Department of Personnel & Administrative Reforms</option>
+                    <option value="Department of Tourism">Department of Tourism</option>
+                    <option value="Department of Women and Child Development and Social Welfare">Department of Women and Child Development and Social Welfare</option>
+                  </select>
+                </label>
+              )}
+
+              {roleType !== 'Citizen' && roleType !== 'Prime Minister' && roleType !== 'Admin' && (
                 <label>
                   Designated State
                   <input
@@ -2425,6 +2650,20 @@ function AuthScreen({ mode, setMode, form, setForm, loading, notice, onSubmit })
                     style={{ flex: 1 }}
                   />
                 </div>
+              </label>
+              <label style={{ display: 'block', marginBottom: '12px' }}>
+                <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  Telegram Chat ID <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>(Optional)</span>
+                </span>
+                <input
+                  value={form.telegram_chat_id || ''}
+                  onChange={(event) => setForm({ ...form, telegram_chat_id: event.target.value })}
+                  placeholder="e.g. 582910243"
+                  style={{ marginTop: '4px' }}
+                />
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-muted)', display: 'block', marginTop: '3px' }}>
+                  Get your Chat ID by messaging `@userinfobot` or `/my_id` to our notifier bot.
+                </span>
               </label>
             </>
           )}

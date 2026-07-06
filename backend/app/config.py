@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     vertex_ai_search_project_id: str | None = None
     vertex_ai_search_location: str = "global"
     vertex_ai_search_datastore_id: str | None = None
+    telegram_bot_token: str | None = None
+    frontend_url: str = "http://localhost:5173"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

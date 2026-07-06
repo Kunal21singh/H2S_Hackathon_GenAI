@@ -141,6 +141,8 @@ class ComplaintStore:
                 from app.models import TimelineEvent
                 if not hasattr(item, 'timeline') or item.timeline is None:
                     item.timeline = []
+                from app.models import ComplaintStatus
+                item.status = ComplaintStatus.in_progress
                 item.timeline.append(TimelineEvent(
                     status="in_progress",
                     timestamp=datetime.now(timezone.utc),
@@ -209,6 +211,43 @@ class ComplaintStore:
                     actor="Admin"
                 ))
                 
+                updated = item
+                break
+        if not updated:
+            return None
+        if self._firestore_client:
+            self._firestore_client.collection(self.settings.firestore_collection).document(complaint_id).set(
+                updated.model_dump(mode="json")
+            )
+        else:
+            self._write_local(items)
+        return updated
+
+    async def get(self, complaint_id: str) -> Complaint | None:
+        items = await self.list()
+        for item in items:
+            if item.id == complaint_id:
+                return item
+        return None
+
+    async def transfer(self, complaint_id: str, new_department: str, reason: str, actor: str) -> Complaint | None:
+        items = await self.list()
+        updated: Complaint | None = None
+        for item in items:
+            if item.id == complaint_id:
+                old_dept = item.classification.department
+                item.classification.department = new_department
+                item.updated_at = datetime.now(timezone.utc)
+                
+                from app.models import TimelineEvent
+                if not hasattr(item, 'timeline') or item.timeline is None:
+                    item.timeline = []
+                item.timeline.append(TimelineEvent(
+                    status=item.status.value,
+                    timestamp=item.updated_at,
+                    description=f"Grievance transferred from {old_dept} to {new_department}. Reason: {reason}",
+                    actor=actor
+                ))
                 updated = item
                 break
         if not updated:

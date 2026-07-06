@@ -17,12 +17,25 @@ class UserStore:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.local_path = Path(settings.local_users_path)
+        self._firestore_client = None
+        if settings.use_firestore:
+            try:
+                from google.cloud import firestore
+                self._firestore_client = firestore.Client(project=settings.google_cloud_project)
+            except Exception:
+                self._firestore_client = None
 
     def register(self, payload: UserRegister) -> UserPublic:
         username = _normalize_username(payload.username)
-        users = self._read_users()
-        if any(user.username.lower() == username for user in users):
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username is already taken.")
+        
+        if self._firestore_client:
+            doc_ref = self._firestore_client.collection("users").document(username)
+            if doc_ref.get().exists:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username is already taken.")
+        else:
+            users = self._read_users()
+            if any(user.username.lower() == username for user in users):
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username is already taken.")
 
         user = User(
             id=f"usr_{uuid4().hex[:10]}",
@@ -31,16 +44,34 @@ class UserStore:
             phone=_normalize_phone(payload.phone),
             user_type=payload.user_type,
             state=payload.state,
+            telegram_chat_id=payload.telegram_chat_id,
             is_active=True,
             password_hash=_hash_password(payload.password),
             created_at=datetime.now(timezone.utc),
         )
-        users.append(user)
-        self._write_users(users)
+        
+        if self._firestore_client:
+            self._firestore_client.collection("users").document(username).set(
+                user.model_dump(mode="json")
+            )
+        else:
+            users.append(user)
+            self._write_users(users)
+            
         return _public_user(user)
 
     def login(self, payload: UserLogin) -> User:
         username = _normalize_username(payload.username)
+        if self._firestore_client:
+            doc = self._firestore_client.collection("users").document(username).get()
+            if doc.exists:
+                user = User.model_validate(doc.to_dict())
+                if _verify_password(payload.password, user.password_hash):
+                    if not user.is_active:
+                        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is not active.")
+                    return user
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password.")
+            
         for user in self._read_users():
             if user.username.lower() == username and _verify_password(payload.password, user.password_hash):
                 if not user.is_active:
@@ -50,6 +81,15 @@ class UserStore:
 
     def get_by_username(self, username: str) -> User:
         normalized = _normalize_username(username)
+        if self._firestore_client:
+            doc = self._firestore_client.collection("users").document(normalized).get()
+            if doc.exists:
+                user = User.model_validate(doc.to_dict())
+                if not user.is_active:
+                    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is not active.")
+                return user
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired session.")
+            
         for user in self._read_users():
             if user.username.lower() == normalized:
                 if not user.is_active:
@@ -80,8 +120,15 @@ class UserStore:
         return [_public_user(u) for u in self._read_users()]
 
     def delete_user(self, username: str) -> bool:
-        users = self._read_users()
         normalized = _normalize_username(username)
+        if self._firestore_client:
+            doc_ref = self._firestore_client.collection("users").document(normalized)
+            if doc_ref.get().exists:
+                doc_ref.delete()
+                return True
+            return False
+            
+        users = self._read_users()
         updated = [u for u in users if u.username.lower() != normalized]
         if len(updated) == len(users):
             return False
@@ -89,12 +136,21 @@ class UserStore:
         return True
 
     def _read_users(self) -> list[User]:
+        if self._firestore_client:
+            docs = self._firestore_client.collection("users").stream()
+            return [User.model_validate(doc.to_dict()) for doc in docs]
         if not self.local_path.exists():
             return []
         data = json.loads(self.local_path.read_text(encoding="utf-8"))
         return [User.model_validate(item) for item in data]
 
     def _write_users(self, users: list[User]) -> None:
+        if self._firestore_client:
+            for user in users:
+                self._firestore_client.collection("users").document(user.username.lower()).set(
+                    user.model_dump(mode="json")
+                )
+            return
         self.local_path.parent.mkdir(parents=True, exist_ok=True)
         payload = [user.model_dump(mode="json") for user in users]
         self.local_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")

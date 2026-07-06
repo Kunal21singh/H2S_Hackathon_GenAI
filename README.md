@@ -1,133 +1,155 @@
-# CivicPulse
+# 🏛️ CivicPulse: AI-Powered Grievance Redressal & Diagnostics Engine
 
-AI Grievance Redressal & Insight Engine for civic issue reporting, routing, hotspot detection, and natural-language analytics.
+CivicPulse is an advanced, high-performance web platform designed to streamline civic issue reporting, automated triage, regional monitoring, and analytics. It empowers citizens to submit grievances and gives municipal administrators deep data-driven diagnostics.
 
-Citizens can report potholes, garbage, water leaks, streetlight issues, and other civic problems through text, photo metadata, and voice transcript fields. The backend uses Gemini when configured, and falls back to local heuristics for hackathon demos. Complaint records can be stored in Firestore or in a local JSON file. Officials can ask analytics questions that are answered through BigQuery when configured, with local summary responses as a fallback.
+The system features multi-modal AI inputs, automated department routing, duplicate detection, hotspot mapping, interactive analytics, and natural language query processing.
 
-## Architecture
+---
 
-```text
-React Dashboard
-  | submit complaints, view triage, ask analytics
-FastAPI Backend
-  | classify + route + duplicate detect + hotspot cluster
-Gemini
-  | multimodal complaint understanding and NL-to-SQL
-Firestore
-  | live complaint tracking
-BigQuery
-  | civic analytics warehouse
-Cloud Run
-  | containerized deployment
-```
+## 🚀 Key Features
 
-## Project Structure
+### 1. Citizen Intake & AI Assistance
+* **Multimodal Image Analysis**: Upload a photo of a civic issue, and the built-in Gemini model will automatically identify the problem and generate a detailed report, pre-filling the complaint form.
+* **Voice Transcription**: Record voice complaints directly inside the browser using integrated speech-to-text.
+* **Interactive Hotspot Map**: Real-time visualization of surrounding grievances, highlighting localized community issues.
 
-```text
-backend/      FastAPI app and service integrations
-frontend/     Vite React dashboard
-deploy/       Cloud Run deployment notes
-.env.example  Configuration template
-```
+### 2. Automated Smart Routing & Duplicate Triage
+* **AI Classification**: Automatically extracts categories, assigns priorities (Low, Medium, High, Critical), and routes reports to respective departments (Water, Roads, Sanitation, etc.).
+* **Deduplication Engine**: Automatically cross-references incoming reports with existing active cases in the same vicinity, flagging duplicates to avoid redundant field deployments.
 
-## Quick Start
+### 3. Executive diagnostics & Row-Level Control
+* **Role-Based Analytics**: Fully customized access control. Users see statistics, timelines, and metrics tailored specifically to their access clearance:
+  * **Prime Minister & System Admins**: Global access to national-level metrics and cross-state comparisons.
+  * **Chief Ministers**: Restricts reports, maps, and insights to their designated state only.
+  * **Department Officers**: Limits analytics strictly to their specific department and state (e.g. Karnataka Water Works).
+  * **Citizens**: Access to local public dashboards.
+* **Smart AI Diagnostics**: Automatically scans the active dataset to generate dynamic insights, bottleneck alerts, regional achievements, and load warnings.
 
-### Backend
+---
 
+## 🛠️ Google Cloud Platform (GCP) Architecture
+
+CivicPulse leverages enterprise GCP services to ensure secure, real-time, serverless operations:
+
+| GCP Service | Component Role |
+| :--- | :--- |
+| **Google Cloud Run** | Hosts containerized microservices for both the FastAPI Backend and Vite React Frontend. |
+| **Cloud Firestore (Native Mode)** | Serves as the primary, real-time database to persist complaints, timeline logs, notifications, and user access records. |
+| **Gemini Pro (`gemini-2.5-flash`)** | Drives multimodal image description, grievance classification, department routing, and answers natural language inquiries. |
+| **Google BigQuery** | Performs large-scale civic data analysis and allows administrators to ask questions in plain English via NL-to-SQL. |
+| **Google Maps Geocoding API** | Translates textual addresses and landmarks into physical GPS coordinates. |
+
+---
+
+## 📂 Project Structure
+
+* 📂 **[backend/]**: Python FastAPI backend service, AI logic, and database integrations.
+* 📂 **[frontend/]**: Vite React app styled with midnight-glassmorphism.
+* 📄 **[.env.example]**: Environment variables template.
+
+---
+
+## 💻 Local Setup & Execution
+
+### 1. Backend Service
+1. Navigate to the backend directory:
+   ```powershell
+   cd backend
+   ```
+2. Create and activate a Python virtual environment:
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
+3. Install dependencies:
+   ```powershell
+   pip install -r requirements.txt
+   ```
+4. Copy the environment configuration template and set your credentials:
+   ```powershell
+   copy ..\.env.example .env
+   ```
+5. Start the FastAPI server:
+   ```powershell
+   uvicorn app.main:app --reload --port 8000
+   ```
+
+### 2. Frontend Dashboard
+1. Navigate to the frontend directory:
+   ```powershell
+   cd ../frontend
+   ```
+2. Install node dependencies:
+   ```powershell
+   npm install
+   ```
+3. Run the hot-reloading development server:
+   ```powershell
+   npm run dev
+   ```
+4. Open your browser and navigate to `http://localhost:5173`.
+
+---
+
+## ☁️ Google Cloud Deployment (Cloud Run)
+
+### 1. Initial Authentication & Project Setup
 ```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-copy ..\.env.example .env
-uvicorn app.main:app --reload --port 8000
-```
-
-### Frontend
-
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-
-Open the Vite URL, usually `http://localhost:5173`.
-
-## Cloud Configuration
-
-The app runs without cloud credentials for demos. To enable managed services, set:
-
-- `GOOGLE_API_KEY` for Gemini
-- `USE_FIRESTORE=true`
-- `GOOGLE_CLOUD_PROJECT`
-- `FIRESTORE_COLLECTION=complaints`
-- `BIGQUERY_DATASET=civicpulse`
-- `BIGQUERY_TABLE=complaints`
-
-For Cloud Run, configure these as service environment variables and grant the runtime service account Firestore and BigQuery permissions.
-
-## API Highlights
-
-- `POST /auth/register` creates an active citizen account with a unique username and required phone number.
-- `POST /auth/login` returns a bearer token for existing active accounts.
-- `GET /auth/me` validates the current session.
-- `POST /complaints` accepts text, location, ward, optional photo, and optional voice transcript.
-- `GET /complaints` returns live complaint records.
-- `GET /hotspots` returns ward/category clusters and severity.
-- `POST /analytics/query` answers official questions like `which wards had the most water complaints this month?`.
-- `GET /health` confirms service readiness.
-
-All dashboard complaint and analytics endpoints require `Authorization: Bearer <token>` after login. Submitted complaints automatically inherit the logged-in user's full name, unique username, and phone number for notification workflows.
-
-## GCP deployment steps
-
-### GCP CLI Setup
-```
-Log in to your Google Cloud SDK
+# Authenticate gcloud CLI
 gcloud auth login
 
-Set your active project
+# Select your GCP Project ID
 gcloud config set project [YOUR_PROJECT_ID]
 
-Enable Google APIs
+# Enable mandatory APIs
 gcloud services enable run.googleapis.com cloudbuild.googleapis.com firestore.googleapis.com
 ```
 
-### Deploy Backend (FastAPI)
-```
+### 2. Deploy the Backend Service
+Compile and push the FastAPI container:
+```powershell
 cd backend
-
-# Build and deploy backend to Cloud Run, enabling Firestore persistence
 gcloud run deploy civicpulse-backend \
     --source . \
     --platform managed \
-    --region us-central1 \
+    --region asia-east1 \
     --allow-unauthenticated \
     --set-env-vars="USE_FIRESTORE=true,GOOGLE_CLOUD_PROJECT=[YOUR_PROJECT_ID],GOOGLE_API_KEY=[GEMINI_API_KEY]"
 ```
+*(Copy the generated service URL, e.g., `https://civicpulse-backend-196436593305.asia-east1.run.app`)*
 
-### Deploy Frontend (Vite + Nginx)
-
-```
+### 3. Deploy the Frontend Dashboard
+Build and push the static Vite/React container. The container runs a shell wrapper to dynamically substitute the backend API base address at startup:
+```powershell
 cd ../frontend
-
-# Build and deploy frontend, configuring the backend URL at runtime via env variables
 gcloud run deploy civicpulse-frontend \
     --source . \
     --platform managed \
-    --region us-central1 \
+    --region asia-east1 \
     --allow-unauthenticated \
     --port 80 \
-    --set-env-vars="VITE_API_BASE=https://civicpulse-backend-xxxx.a.run.app"
+    --set-env-vars="VITE_API_BASE=https://civicpulse-backend-196436593305.asia-east1.run.app"
 ```
 
-
-### Configure CORS on Backend
-To allow the frontend to communicate with the backend, add the frontend origin to the backend's allowed CORS origins:
-
-```
+### 4. Enable Cross-Origin Resource Sharing (CORS)
+Instruct the backend Cloud Run service to accept incoming cross-origin network calls from your frontend domain:
+```powershell
 gcloud run services update civicpulse-backend \
-    --region us-central1 \
-    --update-env-vars="API_CORS_ORIGINS=https://civicpulse-frontend-xxxx.a.run.app"
+    --region asia-east1 \
+    --update-env-vars="API_CORS_ORIGINS=https://civicpulse-frontend-196436593305.asia-east1.run.app"
 ```
 
+---
+
+## 👥 Usage & Roles Workflow
+
+1. **Register/Login Screen**:
+   * Features flag drop-down selectors and automatic 10-digit validation.
+2. **Citizen Portal**:
+   * Reports complaints using text, photo attachment, or voice recordings.
+   * Visualizes hotspots in their district.
+3. **Regional Executives (CM/PM)**:
+   * Prime Minister accesses national diagnostic summaries and compares performance indicators.
+   * Chief Ministers track stats and department performance restricted strictly to their states.
+4. **Department Officers**:
+   * Reviews and triages assigned queues. Logs updates and resolves issues. All dashboard graphs, timelines, and analytical diagnostics reflect only their access limits.
