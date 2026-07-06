@@ -4,6 +4,8 @@ AI Grievance Redressal & Insight Engine for civic issue reporting, routing, hots
 
 Citizens can report potholes, garbage, water leaks, streetlight issues, and other civic problems through text, photo metadata, and voice transcript fields. The backend uses Gemini when configured, and falls back to local heuristics for hackathon demos. Complaint records can be stored in Firestore or in a local JSON file. Officials can ask analytics questions that are answered through BigQuery when configured, with local summary responses as a fallback.
 
+App Link : https://civicpulse-frontend-196436593305.asia-east1.run.app/
+
 ## Architecture
 
 ```text
