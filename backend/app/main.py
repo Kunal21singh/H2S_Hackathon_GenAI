@@ -305,15 +305,93 @@ async def ai_assistant_chat(
     
     user_msg_lower = user_msg.lower()
     
-    if "my complaint" in user_msg_lower or "my status" in user_msg_lower or "my report" in user_msg_lower:
+    # 1. Check if asking about complaints or status
+    if "complaint" in user_msg_lower or "status" in user_msg_lower or "report" in user_msg_lower or "ticket" in user_msg_lower:
+        # Search by exact ticket ID if mentioned
+        words = user_msg.replace("#", " ").split()
+        target_cmp = None
+        for w in words:
+            if w.lower().startswith("cmp_"):
+                matching = [c for c in complaints if c.id.lower() == w.lower()]
+                if matching:
+                    target_cmp = matching[0]
+                    break
+        
+        if target_cmp:
+            dept = target_cmp.classification.department if target_cmp.classification else "Unassigned"
+            st = target_cmp.place + (f", {target_cmp.state}" if target_cmp.state else "")
+            reply = (
+                f"📋 Ticket #{target_cmp.id} Details:\n"
+                f"• Summary: '{target_cmp.text[:70]}...'\n"
+                f"• Status: {target_cmp.status.value.upper()}\n"
+                f"• Location: {st}\n"
+                f"• Department: {dept}\n"
+                f"• Filed Date: {target_cmp.created_at.strftime('%b %d, %Y')}"
+            )
+            return {"response": reply, "timestamp": datetime.now(timezone.utc).isoformat()}
+
+        # Search by location/place mentioned in query
+        matched_by_location = []
+        found_loc_name = None
+        
+        # Check place & state fields in DB against user query
+        for c in complaints:
+            c_place = (c.place or "").strip().lower()
+            c_state = (c.state or "").strip().lower()
+            if c_place and c_place != "unassigned" and c_place in user_msg_lower:
+                matched_by_location.append(c)
+                found_loc_name = c.place
+            elif c_state and c_state in user_msg_lower:
+                matched_by_location.append(c)
+                found_loc_name = c.state
+
+        # Check regex for 'in <location>' pattern
+        if not matched_by_location:
+            import re
+            m = re.search(r'\bin\s+([a-zA-Z0-9\s]+)(\?|\.|$)', user_msg, re.IGNORECASE)
+            if m:
+                loc_target = m.group(1).strip().lower()
+                ignore_words = {"my", "the", "a", "an", "this", "that", "general", "india"}
+                if loc_target and loc_target not in ignore_words:
+                    found_loc_name = loc_target
+                    matched_by_location = [
+                        c for c in complaints 
+                        if (c.place and loc_target in c.place.lower()) 
+                        or (c.state and loc_target in c.state.lower())
+                        or (loc_target in c.text.lower())
+                    ]
+
+        if matched_by_location:
+            user_matched = [c for c in matched_by_location if c.reporter_username == current_user.username]
+            target_list = user_matched if user_matched else matched_by_location
+            latest = target_list[-1]
+            dept = latest.classification.department if latest.classification else "Unassigned"
+            loc = latest.place + (f", {latest.state}" if latest.state else "")
+            
+            reply = (
+                f"📍 Complaint Status for {found_loc_name or latest.place}:\n"
+                f"• Ticket #{latest.id}: '{latest.text[:65]}...'\n"
+                f"• Status: {latest.status.value.upper()}\n"
+                f"• Department: {dept}\n"
+                f"• Location: {loc}\n"
+                f"• Filed Date: {latest.created_at.strftime('%b %d, %Y')}"
+            )
+            if len(target_list) > 1:
+                reply += f"\n\n(Total {len(target_list)} complaints found for location '{found_loc_name or latest.place}')."
+            
+            return {"response": reply, "timestamp": datetime.now(timezone.utc).isoformat()}
+
+        # General user recent complaint fallback
         if not user_complaints:
             reply = f"Hello @{current_user.username}! You currently have no filed complaints in the system. Use the '+ New Complaint' button to report an issue!"
         else:
             latest = user_complaints[-1]
             dept = latest.classification.department if latest.classification else "Unassigned"
-            reply = f"Hello @{current_user.username}! Your most recent grievance is #{latest.id} ('{latest.text[:50]}...').\n• Status: {latest.status.value.upper()}\n• Department: {dept}\n• Date: {latest.created_at.strftime('%b %d, %Y')}"
+            reply = f"Hello @{current_user.username}! Your most recent grievance is #{latest.id} ('{latest.text[:50]}...').\n• Status: {latest.status.value.upper()}\n• Department: {dept}\n• Location: {latest.place}\n• Date: {latest.created_at.strftime('%b %d, %Y')}"
             if latest.status.value == "resolved":
                 reply += f"\n• Resolution Proof verified by @{latest.completed_by or 'Officer'}."
+
+        return {"response": reply, "timestamp": datetime.now(timezone.utc).isoformat()}
 
     elif "resolution rate" in user_msg_lower or "best state" in user_msg_lower or "performance" in user_msg_lower:
         states_map = {}
@@ -350,6 +428,7 @@ async def ai_assistant_chat(
         reply = f"🤖 Civic AI Assistant:\nI processed your query: '{user_msg}'. Currently monitoring {total_count} civic complaints ({active_count} active, {resolved_count} resolved). You can ask me about your complaint status, department performance, or how to file a grievance!"
 
     return {"response": reply, "timestamp": datetime.now(timezone.utc).isoformat()}
+
 
 
 def _filter_complaints_for_user(complaints: list[Complaint], user: User) -> list[Complaint]:
