@@ -216,7 +216,24 @@ class ComplaintStore:
         if not updated:
             return None
         if self._firestore_client:
-            self._firestore_client.collection(self.settings.firestore_collection).document(complaint_id).set(
+            self._firestore_client.collection(self.settings.firestore_collection).document(updated.id).set(
+                updated.model_dump(mode="json")
+            )
+        else:
+            self._write_local(items)
+    async def update(self, complaint: Complaint) -> Complaint | None:
+        items = await self.list()
+        updated: Complaint | None = None
+        target = complaint.id.strip().lower()
+        for i, item in enumerate(items):
+            if item.id.strip().lower() == target:
+                items[i] = complaint
+                updated = complaint
+                break
+        if not updated:
+            return None
+        if self._firestore_client:
+            self._firestore_client.collection(self.settings.firestore_collection).document(updated.id).set(
                 updated.model_dump(mode="json")
             )
         else:
@@ -225,8 +242,9 @@ class ComplaintStore:
 
     async def get(self, complaint_id: str) -> Complaint | None:
         items = await self.list()
+        target = complaint_id.strip().lower()
         for item in items:
-            if item.id == complaint_id:
+            if item.id.strip().lower() == target:
                 return item
         return None
 

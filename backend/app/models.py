@@ -58,6 +58,7 @@ class Complaint(BaseModel):
     classification: Classification
     duplicate_of: str | None = None
     nearby_duplicate_ids: list[str] = []
+    upvotes: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     resolution_photo_filename: str | None = None

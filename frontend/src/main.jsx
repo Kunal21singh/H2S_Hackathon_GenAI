@@ -6,6 +6,7 @@ import {
   BarChart3,
   Bell,
   BookOpen,
+  Bot,
   Briefcase,
   Building2,
   Car,
@@ -35,6 +36,8 @@ import {
   Shield,
   ShieldCheck,
   Sprout,
+  Sparkles,
+  ThumbsUp,
   Trees,
   Truck,
   Upload,
@@ -1601,6 +1604,208 @@ function AdminPanel({ token, user, complaints, refresh }) {
   );
 }
 
+function AIChatAssistantWidget({ session, refresh }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState([
+    { sender: 'ai', text: '👋 Hello! I am Civic AI & Analytics Assistant. Ask me about your grievance status, department performance, hotspots, or civic stats!' }
+  ]);
+  const [inputMsg, setInputMsg] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const sendMessage = async (msgText) => {
+    const textToSend = msgText || inputMsg;
+    if (!textToSend.trim() || loading) return;
+
+    const userMsg = { sender: 'user', text: textToSend };
+    setMessages(prev => [...prev, userMsg]);
+    if (!msgText) setInputMsg('');
+    setLoading(true);
+
+    try {
+      const isAnalyticsQuery = /stats|count|analytics|most|worst|top|bottleneck|hotspot|places|table|how many|department/i.test(textToSend);
+      let answerText = "";
+      let sourceInfo = "";
+      let rowsData = [];
+
+      if (isAnalyticsQuery) {
+        try {
+          const res = await fetch(`${API_BASE}/analytics/query`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHeaders(session.token) },
+            body: JSON.stringify({ question: textToSend }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            answerText = data.answer;
+            sourceInfo = data.source;
+            rowsData = data.rows || [];
+          }
+        } catch (e) {
+          // fallback to /ai/chat
+        }
+      }
+
+      if (!answerText) {
+        const res = await fetch(`${API_BASE}/ai/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeaders(session.token)
+          },
+          body: JSON.stringify({ message: textToSend })
+        });
+
+        if (!res.ok) throw new Error('Could not contact AI Assistant');
+        const data = await res.json();
+        answerText = data.response;
+        sourceInfo = "CivicPulse AI Engine";
+      }
+
+      setMessages(prev => [...prev, {
+        sender: 'ai',
+        text: answerText,
+        source: sourceInfo,
+        rows: rowsData
+      }]);
+    } catch (e) {
+      setMessages(prev => [...prev, {
+        sender: 'ai',
+        text: "Sorry, I am having trouble connecting to AI services right now. Please try again."
+      }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 999 }}>
+      {!isOpen ? (
+        <button
+          onClick={() => setIsOpen(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '12px 18px',
+            borderRadius: '30px',
+            background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+            color: '#ffffff',
+            border: 'none',
+            fontWeight: 'bold',
+            fontSize: '0.88rem',
+            cursor: 'pointer',
+            boxShadow: '0 8px 24px rgba(59, 130, 246, 0.4)',
+            transition: 'transform 0.2s ease',
+          }}
+        >
+          <Bot size={20} />
+          <span>Civic AI & Analytics</span>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
+        </button>
+      ) : (
+        <div style={{
+          width: '380px',
+          height: '520px',
+          background: 'var(--bg-panel-solid, #1e293b)',
+          border: '1px solid var(--border-color, #334155)',
+          borderRadius: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
+          overflow: 'hidden'
+        }}>
+          {/* Header */}
+          <div style={{ padding: '14px 16px', background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)', color: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Bot size={20} />
+              <div>
+                <strong style={{ fontSize: '0.95rem', display: 'block', lineHeight: 1.2 }}>Civic AI & Analytics Assistant</strong>
+                <span style={{ fontSize: '0.7rem', opacity: 0.85 }}>Powered by Gemini & CivicPulse Engine</span>
+              </div>
+            </div>
+            <button onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer', opacity: 0.8 }}>
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Messages body */}
+          <div style={{ flex: 1, padding: '14px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {messages.map((m, idx) => (
+              <div key={idx} style={{
+                alignSelf: m.sender === 'user' ? 'flex-end' : 'flex-start',
+                maxWidth: '88%',
+                padding: '10px 12px',
+                borderRadius: m.sender === 'user' ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
+                background: m.sender === 'user' ? '#3b82f6' : 'rgba(255, 255, 255, 0.08)',
+                color: '#ffffff',
+                fontSize: '0.83rem',
+                lineHeight: '1.4',
+                whiteSpace: 'pre-wrap'
+              }}>
+                <div>{m.text}</div>
+                {m.source && (
+                  <small style={{ display: 'block', marginTop: '4px', fontSize: '0.68rem', color: m.sender === 'user' ? '#93c5fd' : '#94a3b8' }}>
+                    Source: {m.source}
+                  </small>
+                )}
+                {m.rows && m.rows.length > 0 && (
+                  <div style={{ overflowX: 'auto', marginTop: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '6px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <tbody>
+                        {m.rows.map((row, rIdx) => (
+                          <tr key={rIdx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            {Object.entries(row).map(([k, v], cIdx) => (
+                              <td key={cIdx} style={{ fontSize: '0.72rem', padding: '4px 6px', color: '#e2e8f0' }}>
+                                <strong>{k}:</strong> {String(v)}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ))}
+            {loading && (
+              <div style={{ alignSelf: 'flex-start', padding: '8px 12px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '14px', color: '#94a3b8', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <RefreshCw className="spin" size={14} /> AI analyzing database...
+              </div>
+            )}
+          </div>
+
+          {/* Quick chips */}
+          <div style={{ padding: '6px 10px', display: 'flex', gap: '6px', overflowX: 'auto', borderTop: '1px solid var(--border-color, #334155)', background: 'rgba(0,0,0,0.1)' }}>
+            <button onClick={() => sendMessage('What is the status of my complaint?')} style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              📋 My Status
+            </button>
+            <button onClick={() => sendMessage('Which places had the most water complaints this month?')} style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              📊 Place Stats
+            </button>
+            <button onClick={() => sendMessage('Which state has the best resolution rate?')} style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              🏆 Best State
+            </button>
+          </div>
+
+          {/* Input box */}
+          <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} style={{ padding: '10px 12px', display: 'flex', gap: '8px', borderTop: '1px solid var(--border-color, #334155)' }}>
+            <input
+              type="text"
+              placeholder="Ask AI or stats question..."
+              value={inputMsg}
+              onChange={(e) => setInputMsg(e.target.value)}
+              style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color, #334155)', background: 'var(--bg-input, #0f172a)', color: '#ffffff', fontSize: '0.85rem' }}
+            />
+            <button type="submit" disabled={loading || !inputMsg.trim()} style={{ padding: '8px 12px', borderRadius: '8px', background: '#3b82f6', color: '#ffffff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Send size={16} />
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [session, setSession] = useState(() => {
     const saved = localStorage.getItem(AUTH_STORAGE_KEY);
@@ -1643,6 +1848,7 @@ function App() {
   const [showAnalyticsPopup, setShowAnalyticsPopup] = useState(false);
   const [liveQueueCollapsed, setLiveQueueCollapsed] = useState(false);
   const [archiveQueueCollapsed, setArchiveQueueCollapsed] = useState(false);
+  const [duplicateModalData, setDuplicateModalData] = useState(null);
 
   const [detectingLocation, setDetectingLocation] = useState(false);
   const [locationStatus, setLocationStatus] = useState('idle'); // 'idle' | 'success' | 'error' | 'manually_edited'
@@ -1923,13 +2129,41 @@ function App() {
     }
   }
 
-  async function submitComplaint(event) {
-    event.preventDefault();
-    const formEl = event.currentTarget;
-    const formElements = formEl.elements;
+  async function submitComplaint(event, bypassDuplicateCheck = false) {
+    if (event && event.preventDefault) event.preventDefault();
+    const formEl = event?.currentTarget || document.querySelector('form.complaint-form');
+    const formElements = formEl?.elements;
     setLoading(true);
     setNotice(null);
+
     try {
+      if (!bypassDuplicateCheck && form.text.trim().length > 10) {
+        try {
+          const checkRes = await fetch(`${API_BASE}/complaints/check-duplicate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHeaders(session.token) },
+            body: JSON.stringify({ 
+              text: form.text, 
+              place: form.place, 
+              state: form.state,
+              lat: form.lat ? parseFloat(form.lat) : null,
+              lng: form.lng ? parseFloat(form.lng) : null
+            }),
+          });
+          if (checkRes.ok) {
+            const checkData = await checkRes.json();
+            if (checkData.has_duplicates && checkData.matches && checkData.matches.length > 0) {
+              const bestMatch = checkData.matches[0];
+              setDuplicateModalData(bestMatch);
+              setLoading(false);
+              return;
+            }
+          }
+        } catch (err) {
+          console.warn("Duplicate check failed, continuing:", err);
+        }
+      }
+
       let finalLat = form.lat;
       let finalLng = form.lng;
 
@@ -1945,7 +2179,7 @@ function App() {
       Object.entries({ ...form, lat: finalLat, lng: finalLng }).forEach(([key, value]) => {
         if (String(value).trim() !== '') payload.append(key, value);
       });
-      const fileInput = formElements.namedItem('photo');
+      const fileInput = formElements?.namedItem('photo');
       const file = fileInput?.files?.[0];
       if (file) payload.append('photo', file);
 
@@ -1968,7 +2202,7 @@ function App() {
         lng: '',
         voice_transcript: '',
       });
-      formEl.reset();
+      if (formEl?.reset) formEl.reset();
       setNotice({ type: 'success', text: 'Complaint classified and routed.' });
     } catch (error) {
       setNotice({
@@ -1979,6 +2213,44 @@ function App() {
       setLoading(false);
     }
   }
+
+  const [isUpvotingModal, setIsUpvotingModal] = useState(false);
+
+  const handleUpvoteAndClose = async (complaintId, event) => {
+    if (event && event.stopPropagation) event.stopPropagation();
+    setIsUpvotingModal(true);
+    try {
+      const res = await fetch(`${API_BASE}/complaints/${complaintId}/upvote`, {
+        method: 'POST',
+        headers: authHeaders(session.token)
+      });
+      if (!res.ok) {
+        const detail = await readError(res);
+        throw new Error(detail || 'Could not upvote complaint.');
+      }
+      setNotice({ type: 'success', text: `👍 Ticket #${complaintId} upvoted! Priority boosted and department notified.` });
+      setDuplicateModalData(null);
+      setForm({
+        text: '',
+        place: '',
+        state: '',
+        lat: '',
+        lng: '',
+        voice_transcript: '',
+      });
+      setSelectedFile(null);
+      await refresh();
+    } catch (e) {
+      setNotice({ type: 'error', text: e.message || 'Error upvoting complaint.' });
+    } finally {
+      setIsUpvotingModal(false);
+    }
+  };
+
+  const proceedWithSubmission = async () => {
+    setDuplicateModalData(null);
+    await submitComplaint(null, true);
+  };
 
   async function askQuestion(event) {
     event.preventDefault();
@@ -2437,7 +2709,29 @@ function App() {
                           {complaint.place}{complaint.state ? `, ${complaint.state}` : ''} / {complaint.classification.department} / {complaint.reporter_username || 'citizen'}
                         </span>
                       </div>
-                      <div className="rowBadges">
+                      <div className="rowBadges" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={(e) => handleUpvoteAndClose(complaint.id, e)}
+                          title="Upvote grievance priority"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 8px',
+                            borderRadius: '12px',
+                            background: complaint.upvotes > 0 ? 'rgba(16, 185, 129, 0.18)' : 'rgba(255, 255, 255, 0.05)',
+                            color: complaint.upvotes > 0 ? '#10b981' : 'var(--color-muted)',
+                            border: `1px solid ${complaint.upvotes > 0 ? 'rgba(16, 185, 129, 0.4)' : 'var(--border-color)'}`,
+                            fontSize: '0.72rem',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <ThumbsUp size={12} />
+                          <span>{complaint.upvotes || 0} {complaint.upvotes === 1 ? 'Vote' : 'Votes'}</span>
+                        </button>
                         <span className={`pill ${complaint.classification.priority}`}>{complaint.classification.priority}</span>
                         <span className={`pill status-pill ${complaint.status}`}>{complaint.duplicate_of ? `Duplicate of ${complaint.duplicate_of}` : complaint.status}</span>
                       </div>
@@ -2786,100 +3080,60 @@ function App() {
       </div>
       )}
 
-      {/* Floating Chat Bubble & Pop-up for Conversational Analytics */}
-      <div className="floating-analytics-container">
-        <button 
-          className={`floating-chat-fab ${showAnalyticsPopup ? 'active' : ''}`}
-          onClick={() => setShowAnalyticsPopup(!showAnalyticsPopup)}
-          title="AI Analytics Assistant"
-        >
-          {showAnalyticsPopup ? <X size={22} /> : <MessageSquare size={22} />}
-        </button>
 
-        {showAnalyticsPopup && (
-          <div className="analytics-chat-popup">
-            <div className="analytics-chat-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <BarChart3 size={16} color="#ffffff" />
-                <h3 style={{ margin: 0, color: '#ffffff', fontSize: '0.9rem', fontFamily: 'Outfit' }}>Analytics Assistant</h3>
+
+      {/* AI Duplicate Alert Modal */}
+      {duplicateModalData && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ width: '100%', maxWidth: '480px', background: 'var(--bg-panel-solid, #1e293b)', border: '1px solid var(--border-color, #334155)', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', boxShadow: '0 20px 50px rgba(0,0,0,0.6)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(245, 158, 11, 0.2)', border: '1px solid #f59e0b', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Sparkles size={20} />
               </div>
-              <button className="chat-close-btn" onClick={() => setShowAnalyticsPopup(false)}>
-                <X size={14} />
-              </button>
-            </div>
-            
-            <div className="analytics-chat-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', flex: 1, padding: '16px' }}>
-              <p className="chat-welcome-msg" style={{ margin: 0, color: '#64748b', fontSize: '0.85rem' }}>
-                Ask me stats about complaints, hotspots, or priorities!
-              </p>
-              
-              {chatHistory.map((msg, index) => (
-                <div 
-                  key={index} 
-                  style={{
-                    alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                    background: msg.sender === 'user' ? 'var(--color-primary)' : '#f1f5f9',
-                    color: msg.sender === 'user' ? '#ffffff' : '#0f172a',
-                    padding: '10px 14px',
-                    borderRadius: msg.sender === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
-                    maxWidth: '85%',
-                    fontSize: '0.86rem',
-                    boxShadow: 'var(--shadow-sm)',
-                    wordBreak: 'break-word'
-                  }}
-                >
-                  {msg.sender === 'user' ? (
-                    <div>{msg.text}</div>
-                  ) : (
-                    <div>
-                      <div className="answer-text" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{msg.text}</div>
-                      <small style={{ display: 'block', marginTop: '6px', fontSize: '0.72rem', color: msg.sender === 'user' ? '#93c5fd' : '#64748b' }}>
-                        Source: {msg.source}
-                      </small>
-                      {msg.rows && msg.rows.length > 0 && (
-                        <div className="table-container" style={{ overflowX: 'auto', marginTop: '8px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '6px' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <tbody>
-                              {msg.rows.map((row, rIdx) => (
-                                <tr key={rIdx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                  {Object.entries(row).map(([k, v], cIdx) => (
-                                    <td key={cIdx} style={{ fontSize: '0.74rem', padding: '4px 6px', color: '#334155' }}>
-                                      <strong>{k}:</strong> {String(v)}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-              
-              {isAsking && (
-                <div className="chat-loading-bubble" style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#64748b' }}>
-                  <RefreshCw className="spin" size={14} />
-                  <span>Analyzing database...</span>
-                </div>
-              )}
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--color-main)' }}>AI Duplicate Grievance Alert</h3>
+                <span style={{ fontSize: '0.78rem', color: '#f59e0b', fontWeight: 'bold' }}>{duplicateModalData.match_percent}% Match Found with active complaint</span>
+              </div>
             </div>
 
-            <form onSubmit={askQuestion} className="analytics-chat-footer">
-              <input 
-                value={question} 
-                onChange={(event) => setQuestion(event.target.value)} 
-                placeholder="Ask stats question..."
-                required
-              />
-              <button type="submit" className="chat-send-btn" disabled={loading}>
-                <Send size={14} />
+            <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 'bold', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Ticket #{duplicateModalData.id} • {duplicateModalData.department}</span>
+              <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: '600', color: 'var(--color-main)' }}>"{duplicateModalData.text}"</p>
+              <div style={{ display: 'flex', gap: '12px', fontSize: '0.78rem', color: 'var(--color-muted)', marginTop: '4px' }}>
+                <span>Status: <strong style={{ color: '#10b981' }}>{(duplicateModalData.status || 'NEW').toUpperCase()}</strong></span>
+                <span>Upvotes: <strong>👍 {duplicateModalData.upvotes || 0}</strong></span>
+              </div>
+            </div>
+
+            <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-muted)', lineHeight: '1.4' }}>
+              An active complaint matching your report has already been logged. You can <strong>upvote this existing ticket</strong> to boost its priority for department officials, or proceed to submit a separate ticket.
+            </p>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+              <button
+                type="button"
+                disabled={isUpvotingModal}
+                onClick={(e) => handleUpvoteAndClose(duplicateModalData.id, e)}
+                style={{ flex: 1, padding: '10px 14px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                {isUpvotingModal ? <RefreshCw className="spin" size={16} /> : <ThumbsUp size={16} />}
+                {isUpvotingModal ? 'Upvoting...' : 'Upvote & Boost Priority'}
               </button>
-            </form>
+              <button
+                type="button"
+                disabled={isUpvotingModal}
+                onClick={proceedWithSubmission}
+                style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.08)', color: 'var(--color-main)', border: '1px solid var(--border-color)', borderRadius: '8px', fontSize: '0.85rem', cursor: 'pointer' }}
+              >
+                Submit New Anyway
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Floating AI Assistant Chatbot Widget */}
+      <AIChatAssistantWidget session={session} refresh={refresh} />
     </main>
   );
 }

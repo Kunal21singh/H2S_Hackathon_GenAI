@@ -3,6 +3,8 @@ from functools import lru_cache
 from pathlib import Path
 from uuid import uuid4
 
+from pydantic import BaseModel
+
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -228,6 +230,128 @@ async def create_complaint(
     return added_complaint
 
 
+class DuplicateCheckRequest(BaseModel):
+    text: str
+    place: str | None = None
+    state: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    category: str | None = None
+
+@app.post("/complaints/check-duplicate")
+async def check_duplicate_complaint(
+    body: DuplicateCheckRequest,
+    store: ComplaintStore = Depends(get_store),
+    current_user: User = Depends(get_current_user),
+):
+    from app.services.duplicates import find_duplicates_with_scores
+    existing = await store.list()
+    matches = find_duplicates_with_scores(
+        new_text=body.text,
+        place=body.place,
+        state=body.state,
+        lat=body.lat,
+        lng=body.lng,
+        category=body.category,
+        existing=existing
+    )
+    return {"has_duplicates": len(matches) > 0, "matches": matches}
+
+
+@app.post("/complaints/{complaint_id}/upvote")
+async def upvote_complaint(
+    complaint_id: str,
+    store: ComplaintStore = Depends(get_store),
+    current_user: User = Depends(get_current_user),
+):
+    complaint = await store.get(complaint_id)
+    if not complaint:
+        raise HTTPException(status_code=404, detail="Complaint not found.")
+    
+    complaint.upvotes = getattr(complaint, "upvotes", 0) + 1
+    if not complaint.timeline:
+        complaint.timeline = []
+    
+    from app.models import TimelineEvent
+    complaint.timeline.append(TimelineEvent(
+        status=complaint.status.value if hasattr(complaint.status, "value") else str(complaint.status),
+        timestamp=datetime.now(timezone.utc),
+        description=f"Priority upvoted by citizen (@{current_user.username}). Total votes: {complaint.upvotes}.",
+        actor=current_user.username
+    ))
+    
+    updated = await store.update(complaint)
+    return updated
+
+
+class AIChatRequest(BaseModel):
+    message: str
+
+@app.post("/ai/chat")
+async def ai_assistant_chat(
+    body: AIChatRequest,
+    store: ComplaintStore = Depends(get_store),
+    current_user: User = Depends(get_current_user),
+):
+    user_msg = body.message.strip()
+    if not user_msg:
+        raise HTTPException(status_code=400, detail="Empty query.")
+    
+    complaints = await store.list()
+    user_complaints = [c for c in complaints if c.reporter_username == current_user.username]
+    total_count = len(complaints)
+    active_count = len([c for c in complaints if c.status.value != "resolved" and not c.duplicate_of])
+    resolved_count = len([c for c in complaints if c.status.value == "resolved"])
+    
+    user_msg_lower = user_msg.lower()
+    
+    if "my complaint" in user_msg_lower or "my status" in user_msg_lower or "my report" in user_msg_lower:
+        if not user_complaints:
+            reply = f"Hello @{current_user.username}! You currently have no filed complaints in the system. Use the '+ New Complaint' button to report an issue!"
+        else:
+            latest = user_complaints[-1]
+            dept = latest.classification.department if latest.classification else "Unassigned"
+            reply = f"Hello @{current_user.username}! Your most recent grievance is #{latest.id} ('{latest.text[:50]}...').\n• Status: {latest.status.value.upper()}\n• Department: {dept}\n• Date: {latest.created_at.strftime('%b %d, %Y')}"
+            if latest.status.value == "resolved":
+                reply += f"\n• Resolution Proof verified by @{latest.completed_by or 'Officer'}."
+
+    elif "resolution rate" in user_msg_lower or "best state" in user_msg_lower or "performance" in user_msg_lower:
+        states_map = {}
+        for c in complaints:
+            st = c.state or "West Bengal"
+            if st not in states_map:
+                states_map[st] = {"total": 0, "resolved": 0}
+            states_map[st]["total"] += 1
+            if c.status.value == "resolved":
+                states_map[st]["resolved"] += 1
+        
+        top_state = None
+        best_rate = -1
+        for st, counts in states_map.items():
+            rate = round((counts["resolved"] / max(counts["total"], 1)) * 100, 1)
+            if rate > best_rate:
+                best_rate = rate
+                top_state = st
+        
+        reply = f"📊 System Performance Overview:\n• Total Complaints: {total_count}\n• Active Cases: {active_count}\n• Resolved Cases: {resolved_count}\n• Top Performing State: {top_state or 'West Bengal'} ({best_rate}% resolution rate)."
+
+    elif "how to report" in user_msg_lower or "file" in user_msg_lower or "help" in user_msg_lower:
+        reply = "💡 How to file a civic grievance:\n1. Click '+ New Complaint' in your dashboard.\n2. Type your grievance description or click the Microphone 🎙️ to dictate using voice-to-text.\n3. (Optional) Attach photo evidence.\n4. CivicPulse AI auto-classifies department, detects duplicates, and assigns priority!"
+
+    elif "department" in user_msg_lower or "public works" in user_msg_lower or "water" in user_msg_lower:
+        dept_counts = {}
+        for c in complaints:
+            d = c.classification.department if c.classification else "Other"
+            dept_counts[d] = dept_counts.get(d, 0) + 1
+        top_dept = max(dept_counts.items(), key=lambda x: x[1])[0] if dept_counts else "Public Works"
+        reply = f"🏛️ Department Insights:\n• Most active department: {top_dept} ({dept_counts.get(top_dept, 0)} cases).\n• Total monitored departments: 27.\n• AI auto-routes all incoming complaints to the responsible authority with high precision."
+
+    else:
+        reply = f"🤖 Civic AI Assistant:\nI processed your query: '{user_msg}'. Currently monitoring {total_count} civic complaints ({active_count} active, {resolved_count} resolved). You can ask me about your complaint status, department performance, or how to file a grievance!"
+
+    return {"response": reply, "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
 def _filter_complaints_for_user(complaints: list[Complaint], user: User) -> list[Complaint]:
     user_type = getattr(user, "user_type", "Citizen")
     
@@ -242,7 +366,11 @@ def _filter_complaints_for_user(complaints: list[Complaint], user: User) -> list
         
     if user_type == "Citizen":
         user_username = getattr(user, "username", "").strip().lower()
-        return [c for c in complaints if c.reporter_username and c.reporter_username.strip().lower() == user_username]
+        return [
+            c for c in complaints 
+            if (c.reporter_username and c.reporter_username.strip().lower() == user_username)
+            or any(evt.actor and evt.actor.strip().lower() == user_username for evt in (c.timeline or []))
+        ]
         
     user_type_lower = user_type.lower()
     departments = []
@@ -286,13 +414,30 @@ def _filter_complaints_for_user(complaints: list[Complaint], user: User) -> list
     ]
 
 
+PRIORITY_WEIGHTS = {"critical": 4, "high": 3, "medium": 2, "low": 1}
+STATUS_WEIGHTS = {"in_progress": 3, "routed": 2, "new": 2, "resolved": 1}
+
+def complaint_sort_key(item: Complaint):
+    status_str = item.status.value if hasattr(item.status, "value") else str(item.status)
+    s_weight = STATUS_WEIGHTS.get(status_str.lower(), 1)
+    
+    p_str = item.classification.priority.value if (item.classification and hasattr(item.classification.priority, "value")) else str(item.classification.priority if item.classification else "medium")
+    p_weight = PRIORITY_WEIGHTS.get(p_str.lower(), 2)
+    
+    upvotes = getattr(item, "upvotes", 0) or 0
+    
+    ts = item.created_at.timestamp() if hasattr(item.created_at, "timestamp") else 0
+    
+    return (s_weight, p_weight, upvotes, ts)
+
+
 @app.get("/complaints", response_model=list[Complaint])
 async def list_complaints(
     store: ComplaintStore = Depends(get_store),
     current_user: User = Depends(get_current_user),
 ) -> list[Complaint]:
     filtered = _filter_complaints_for_user(await store.list(), current_user)
-    return sorted(filtered, key=lambda item: item.created_at, reverse=True)
+    return sorted(filtered, key=complaint_sort_key, reverse=True)
 
 
 @app.patch("/complaints/{complaint_id}/status", response_model=Complaint)
