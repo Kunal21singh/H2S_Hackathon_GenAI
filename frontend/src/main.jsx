@@ -5,21 +5,39 @@ import {
   AlertTriangle,
   BarChart3,
   Bell,
+  BookOpen,
+  Briefcase,
+  Building2,
+  Car,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Coins,
   Compass,
+  Cpu,
+  Fish,
+  Flame,
+  GraduationCap,
+  HardHat,
+  HeartPulse,
+  Leaf,
   LogOut,
   MapPin,
   MessageSquare,
   Mic,
   RefreshCw,
+  Scale,
   Send,
+  Shield,
   ShieldCheck,
+  Sprout,
+  Trees,
+  Truck,
   Upload,
   UserPlus,
   Waves,
   X,
+  Zap,
 } from 'lucide-react';
 import './styles.css';
 
@@ -530,6 +548,73 @@ function AnalyticsDashboard({ user, complaints }) {
   );
 }
 
+export function getShortDeptName(deptName) {
+  if (!deptName) return 'Unassigned';
+  const cleaned = deptName.trim();
+  
+  const mappings = {
+    'Department of Public Works': 'Public Works',
+    'Department of Urban Development and Municipal Affairs': 'Urban Development',
+    'Department of Information Technology and Electronics': 'IT & Electronics',
+    'Department of Public Enterprises & Industrial Reconstruction': 'Public Enterprises',
+    'Department of Technical Education, Training and Skill Development': 'Technical Edu & Skill Dev',
+    'Department of Women and Child Development and Social Welfare': 'Women & Child Dev',
+    'Department of Industry, Commerce & Enterprises': 'Industry & Commerce',
+    'Department of Health & Family Welfare': 'Health & Family Welfare',
+    'Department of Information & Cultural Affairs': 'Info & Cultural Affairs',
+    'Department of Minority Affairs & Madrasah Education': 'Minority Affairs',
+    'Department of Personnel & Administrative Reforms': 'Personnel & Admin',
+    'Department of Home and Hill Affairs': 'Home & Hill Affairs',
+    'Department of Land & Land Reforms': 'Land & Land Reforms',
+    'Department of North Bengal Development': 'North Bengal Dev',
+    'Department of School Education': 'School Education',
+    'Department of Sundarban Affairs': 'Sundarban Affairs',
+    'Department of Agriculture': 'Agriculture',
+    'Department of Environment': 'Environment',
+    'Department of Finance': 'Finance',
+    'Department of Fisheries': 'Fisheries',
+    'Department of Forests': 'Forests',
+    'Department of Law': 'Law',
+    'Department of Parliamentary Affairs': 'Parliamentary Affairs',
+    'Department of Power': 'Power',
+    'Department of Transport': 'Transport',
+    'Department of Tourism': 'Tourism',
+    'Department of Labour': 'Labour',
+  };
+
+  if (mappings[cleaned]) {
+    return mappings[cleaned];
+  }
+
+  return cleaned.replace(/^(Department of|Dept of)\s+/i, '');
+}
+
+export function getDeptIcon(deptName) {
+  const short = getShortDeptName(deptName).toLowerCase();
+  
+  if (short.includes('public works') || short.includes('works')) return <HardHat size={16} />;
+  if (short.includes('urban') || short.includes('municipal')) return <Building2 size={16} />;
+  if (short.includes('power') || short.includes('electricity')) return <Zap size={16} />;
+  if (short.includes('transport')) return <Truck size={16} />;
+  if (short.includes('environment')) return <Leaf size={16} />;
+  if (short.includes('home') || short.includes('hill')) return <Shield size={16} />;
+  if (short.includes('agriculture')) return <Sprout size={16} />;
+  if (short.includes('finance')) return <Coins size={16} />;
+  if (short.includes('fisheries') || short.includes('fish')) return <Fish size={16} />;
+  if (short.includes('forest')) return <Trees size={16} />;
+  if (short.includes('it &') || short.includes('technology') || short.includes('electronics')) return <Cpu size={16} />;
+  if (short.includes('law') || short.includes('parliamentary')) return <Scale size={16} />;
+  if (short.includes('health')) return <HeartPulse size={16} />;
+  if (short.includes('education') || short.includes('school') || short.includes('skill')) return <GraduationCap size={16} />;
+  if (short.includes('industry') || short.includes('enterprise') || short.includes('commerce')) return <Briefcase size={16} />;
+  if (short.includes('tourism')) return <Compass size={16} />;
+  if (short.includes('fire')) return <Flame size={16} />;
+  if (short.includes('traffic')) return <Car size={16} />;
+  if (short.includes('land')) return <MapPin size={16} />;
+  
+  return <Building2 size={16} />;
+}
+
 function ExecutiveMonitor({ user, complaints }) {
   const [selectedState, setSelectedState] = React.useState(null);
 
@@ -592,8 +677,8 @@ function ExecutiveMonitor({ user, complaints }) {
             <p className="muted" style={{ padding: '20px', gridColumn: '1 / -1', textAlign: 'center' }}>No state data found.</p>
           ) : (
             statesList.map((st) => {
-              const isActive = st.name === selectedState;
               const barColor = '#16a34a';
+              const isActive = st.name === selectedState;
               
               return (
                 <div 
@@ -644,18 +729,28 @@ function ExecutiveMonitor({ user, complaints }) {
                 Clear Selection
               </button>
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', alignContent: 'start', maxHeight: '200px', overflowY: 'auto', padding: '4px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', alignContent: 'start', maxHeight: '240px', overflowY: 'auto', padding: '4px' }}>
               {drillDownList.map((dp) => {
                 const barColor = '#16a34a';
+                const shortName = getShortDeptName(dp.name);
+                const DeptIcon = getDeptIcon(dp.name);
                 
                 return (
                   <div 
                     key={dp.name}
-                    className="monitor-card"
+                    className="monitor-card dept-card"
+                    title={dp.name}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span className="dept-name" style={{ fontWeight: '700', fontSize: '0.85rem', color: 'var(--color-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dp.name}</span>
-                      <span className="pill" style={{ fontSize: '0.68rem', padding: '2px 5px', fontWeight: 'bold' }}>{dp.total} Total</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                        <div className="dept-icon-badge" style={{ background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', padding: '5px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {DeptIcon}
+                        </div>
+                        <span className="dept-name" style={{ fontWeight: '700', fontSize: '0.88rem', color: 'var(--color-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {shortName}
+                        </span>
+                      </div>
+                      <span className="pill" style={{ fontSize: '0.68rem', padding: '2px 5px', fontWeight: 'bold', flexShrink: 0 }}>{dp.total} Total</span>
                     </div>
                     
                     <div style={{ display: 'flex', gap: '14px', fontSize: '0.75rem' }}>
@@ -677,6 +772,11 @@ function ExecutiveMonitor({ user, complaints }) {
                       <div className="progress-container">
                         <div style={{ width: `${dp.rate}%`, height: '100%', background: barColor, borderRadius: '2px', transition: 'width 0.3s ease' }}></div>
                       </div>
+                    </div>
+
+                    <div className="monitor-card-footer" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '6px', marginTop: '2px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                      <span style={{ color: '#3b82f6', fontSize: '0.68rem', fontWeight: 'bold', textTransform: 'uppercase' }}>Dept</span>
+                      <span style={{ fontWeight: '700', color: 'var(--color-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }} title={shortName}>{shortName}</span>
                     </div>
                   </div>
                 );
@@ -717,21 +817,31 @@ function ExecutiveMonitor({ user, complaints }) {
         <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
           Administrative performance monitoring for departments within <strong>{userState}</strong>.
         </p>
-        <div style={{ flex: '1 1 auto', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', alignContent: 'start', minHeight: '260px', padding: '4px' }}>
+        <div style={{ flex: '1 1 auto', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', alignContent: 'start', minHeight: '260px', padding: '4px' }}>
           {deptsList.length === 0 ? (
             <p className="muted" style={{ padding: '20px', gridColumn: '1 / -1', textAlign: 'center' }}>No department data found.</p>
           ) : (
             deptsList.map((dp) => {
               const barColor = '#16a34a';
+              const shortName = getShortDeptName(dp.name);
+              const DeptIcon = getDeptIcon(dp.name);
               
               return (
                 <div 
                   key={dp.name} 
-                  className="monitor-card"
+                  className="monitor-card dept-card"
+                  title={dp.name}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="dept-name" style={{ fontWeight: '700', fontSize: '0.9rem', color: 'var(--color-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dp.name}</span>
-                    <span className="pill" style={{ fontSize: '0.7rem', padding: '2px 6px', fontWeight: 'bold' }}>{dp.total} Total</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                      <div className="dept-icon-badge" style={{ background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', padding: '5px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {DeptIcon}
+                      </div>
+                      <span className="dept-name" style={{ fontWeight: '700', fontSize: '0.88rem', color: 'var(--color-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {shortName}
+                      </span>
+                    </div>
+                    <span className="pill" style={{ fontSize: '0.7rem', padding: '2px 6px', fontWeight: 'bold', flexShrink: 0 }}>{dp.total} Total</span>
                   </div>
                   
                   <div style={{ display: 'flex', gap: '16px', fontSize: '0.8rem' }}>
@@ -753,6 +863,11 @@ function ExecutiveMonitor({ user, complaints }) {
                     <div className="progress-container">
                       <div style={{ width: `${dp.rate}%`, height: '100%', background: barColor, borderRadius: '3px', transition: 'width 0.3s ease' }}></div>
                     </div>
+                  </div>
+
+                  <div className="monitor-card-footer" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '6px', marginTop: '2px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                    <span style={{ color: '#3b82f6', fontSize: '0.68rem', fontWeight: 'bold', textTransform: 'uppercase' }}>Dept</span>
+                    <span style={{ fontWeight: '700', color: 'var(--color-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }} title={shortName}>{shortName}</span>
                   </div>
                 </div>
               );
