@@ -12,9 +12,13 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Clock,
   Coins,
   Compass,
   Cpu,
+  Download,
+  FileText,
+  Filter,
   Fish,
   Flame,
   GraduationCap,
@@ -180,11 +184,96 @@ function ComplaintTimeline({ complaint }) {
     });
   }
 
+  const currentStatus = complaint.status || 'routed';
+  const stages = [
+    { key: 'new', label: 'Reported', sub: 'Citizen Intake' },
+    { key: 'routed', label: 'AI Routed', sub: getShortDeptName(complaint.classification?.department) || 'Assigned' },
+    { key: 'in_progress', label: 'In Progress', sub: 'Action Initiated' },
+    { key: 'resolved', label: 'Resolved', sub: 'Proof Verified' },
+  ];
+
+  const getStepState = (stepKey) => {
+    const statusOrder = ['new', 'routed', 'in_progress', 'resolved'];
+    const currentIndex = statusOrder.indexOf(currentStatus);
+    const stepIndex = statusOrder.indexOf(stepKey);
+
+    if (stepIndex < currentIndex || currentStatus === 'resolved') {
+      return 'completed';
+    } else if (stepIndex === currentIndex) {
+      return 'active';
+    }
+    return 'pending';
+  };
+
   return (
     <div className="timeline-container" style={{ marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
       <h4 style={{ margin: '0 0 12px', color: 'var(--color-primary-hover)', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <span>📋 Status Timeline & History</span>
+        <span>📋 Multi-Stage Grievance Lifecycle & Timeline</span>
       </h4>
+
+      {/* Interactive 4-Stage Stepper Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '8px 0 20px', padding: '14px 16px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '10px', border: '1px solid var(--border-color)', overflowX: 'auto' }}>
+        {stages.map((stg, i) => {
+          const state = getStepState(stg.key);
+          const isCompleted = state === 'completed';
+          const isActive = state === 'active';
+          
+          let stepBg = 'rgba(255, 255, 255, 0.05)';
+          let stepColor = 'var(--color-muted)';
+          let borderColor = 'var(--border-color)';
+          
+          if (isCompleted) {
+            stepBg = 'rgba(16, 185, 129, 0.15)';
+            stepColor = '#10b981';
+            borderColor = '#10b981';
+          } else if (isActive) {
+            stepBg = 'rgba(59, 130, 246, 0.2)';
+            stepColor = '#3b82f6';
+            borderColor = '#3b82f6';
+          }
+
+          return (
+            <React.Fragment key={stg.key}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px', zIndex: 1, flex: '0 0 auto' }}>
+                <div style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  background: stepBg,
+                  border: `2px solid ${borderColor}`,
+                  color: stepColor,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 'bold',
+                  fontSize: '0.8rem',
+                  transition: 'all 0.3s ease',
+                  boxShadow: isActive ? '0 0 10px rgba(59, 130, 246, 0.4)' : 'none'
+                }}>
+                  {isCompleted ? <CheckCircle2 size={16} /> : (i + 1)}
+                </div>
+                <span style={{ fontSize: '0.78rem', fontWeight: isActive || isCompleted ? '700' : '500', color: isActive || isCompleted ? 'var(--color-main)' : 'var(--color-muted)' }}>
+                  {stg.label}
+                </span>
+                <span style={{ fontSize: '0.68rem', color: 'var(--color-muted)', maxWidth: '90px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {stg.sub}
+                </span>
+              </div>
+              {i < stages.length - 1 && (
+                <div style={{
+                  flex: 1,
+                  height: '2px',
+                  background: isCompleted ? '#10b981' : 'var(--border-color)',
+                  margin: '0 8px 20px',
+                  minWidth: '20px',
+                  transition: 'background 0.3s ease'
+                }} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingLeft: '8px' }}>
         {events.map((evt, idx) => {
           const isLast = idx === events.length - 1;
@@ -231,6 +320,87 @@ function ComplaintTimeline({ complaint }) {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function PhotoComparisonCard({ complaint }) {
+  const hasOriginal = Boolean(complaint.photo_filename);
+  const hasResolution = Boolean(complaint.resolution_photo_filename);
+
+  return (
+    <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginTop: '16px' }}>
+      <h4 style={{ margin: '0 0 12px', color: 'var(--color-primary-hover)', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <span>📷 Visual Evidence & Resolution Comparison</span>
+      </h4>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+        {/* BEFORE CARD */}
+        <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: '800', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
+              📷 BEFORE: Citizen Evidence
+            </span>
+            {complaint.reporter_username && (
+              <span style={{ fontSize: '0.72rem', color: 'var(--color-muted)' }}>@{complaint.reporter_username}</span>
+            )}
+          </div>
+          
+          {hasOriginal ? (
+            <a href={`${API_BASE}/uploads/${complaint.photo_filename}`} target="_blank" rel="noreferrer" style={{ display: 'block', borderRadius: '6px', overflow: 'hidden' }}>
+              <img 
+                src={`${API_BASE}/uploads/${complaint.photo_filename}`} 
+                alt="Original Evidence" 
+                style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+              />
+            </a>
+          ) : (
+            <div style={{ height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.15)', borderRadius: '6px', color: 'var(--color-muted)', fontSize: '0.78rem', fontStyle: 'italic' }}>
+              No photo submitted with original complaint
+            </div>
+          )}
+        </div>
+
+        {/* AFTER CARD */}
+        <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ 
+              fontSize: '0.72rem', 
+              fontWeight: '800', 
+              background: complaint.status === 'resolved' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)', 
+              color: complaint.status === 'resolved' ? '#10b981' : '#f59e0b', 
+              border: `1px solid ${complaint.status === 'resolved' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`, 
+              padding: '2px 8px', 
+              borderRadius: '4px', 
+              textTransform: 'uppercase' 
+            }}>
+              {complaint.status === 'resolved' ? '✅ AFTER: Verified Resolution' : '⏳ AFTER: Resolution Pending'}
+            </span>
+            {complaint.completed_by && (
+              <span style={{ fontSize: '0.72rem', color: 'var(--color-muted)' }}>@{complaint.completed_by}</span>
+            )}
+          </div>
+
+          {hasResolution ? (
+            <a href={`${API_BASE}/uploads/${complaint.resolution_photo_filename}`} target="_blank" rel="noreferrer" style={{ display: 'block', borderRadius: '6px', overflow: 'hidden' }}>
+              <img 
+                src={`${API_BASE}/uploads/${complaint.resolution_photo_filename}`} 
+                alt="Resolution Proof" 
+                style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.4)' }}
+              />
+            </a>
+          ) : complaint.status === 'resolved' ? (
+            <div style={{ height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16, 185, 129, 0.05)', borderRadius: '6px', color: '#10b981', fontSize: '0.8rem', fontWeight: '600' }}>
+              ✅ Resolved (Official confirmed completion)
+            </div>
+          ) : (
+            <div style={{ height: '140px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', background: 'rgba(255, 255, 255, 0.01)', borderRadius: '6px', color: 'var(--color-muted)', fontSize: '0.78rem', textAlign: 'center', padding: '12px' }}>
+              <Clock size={22} style={{ color: '#f59e0b', opacity: 0.7 }} />
+              <span>Resolution proof photo will be uploaded by the department official upon completion.</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -615,14 +785,102 @@ export function getDeptIcon(deptName) {
   return <Building2 size={16} />;
 }
 
+export function getDeptHealthGrade(resolvedRate, activeCount, criticalCount = 0) {
+  const rate = parseFloat(resolvedRate) || 0;
+  let score = rate;
+  score -= (criticalCount * 12);
+  if (activeCount > 5) {
+    score -= ((activeCount - 5) * 3);
+  }
+  score = Math.max(0, Math.min(100, score));
+
+  if (score >= 75) {
+    return {
+      grade: 'A+',
+      label: 'Optimal',
+      color: '#10b981',
+      bg: 'rgba(16, 185, 129, 0.15)',
+      borderColor: 'rgba(16, 185, 129, 0.4)'
+    };
+  } else if (score >= 45) {
+    return {
+      grade: 'B',
+      label: 'Moderate',
+      color: '#f59e0b',
+      bg: 'rgba(245, 158, 11, 0.15)',
+      borderColor: 'rgba(245, 158, 11, 0.4)'
+    };
+  } else {
+    return {
+      grade: 'F',
+      label: 'Bottleneck',
+      color: '#ef4444',
+      bg: 'rgba(239, 68, 68, 0.15)',
+      borderColor: 'rgba(239, 68, 68, 0.4)'
+    };
+  }
+}
+
 function ExecutiveMonitor({ user, complaints }) {
   const [selectedState, setSelectedState] = React.useState(null);
+  const [priorityFilter, setPriorityFilter] = React.useState('all');
+  const [timeFilter, setTimeFilter] = React.useState('all');
 
   const isPM = user.user_type === 'Prime Minister';
-  
+
+  const filterComplaint = React.useCallback((c) => {
+    if (timeFilter !== 'all' && c.created_at) {
+      const createdDate = new Date(c.created_at);
+      const now = new Date();
+      const diffDays = (now - createdDate) / (1000 * 60 * 60 * 24);
+      if (timeFilter === '7days' && diffDays > 7) return false;
+      if (timeFilter === '30days' && diffDays > 30) return false;
+    }
+    if (priorityFilter !== 'all') {
+      const priority = (c.classification?.priority || '').toLowerCase();
+      if (priorityFilter === 'critical' && priority !== 'critical') return false;
+      if (priorityFilter === 'high_critical' && !['critical', 'high'].includes(priority)) return false;
+    }
+    return true;
+  }, [priorityFilter, timeFilter]);
+
+  const handleExportCSV = (list, scopeName, isNationalLevel = false) => {
+    if (!list || list.length === 0) {
+      alert("No data available to export for current filter selection.");
+      return;
+    }
+    
+    const entityHeader = isNationalLevel ? "State Name" : "Department Name";
+    const headers = [entityHeader, "Health Grade", "Status Label", "Total Complaints", "Active Complaints", "Resolved Complaints", "Resolution Rate (%)", "Critical Complaints"];
+    
+    const rows = list.map(item => {
+      const name = isNationalLevel ? item.name : getShortDeptName(item.name);
+      const health = getDeptHealthGrade(item.rate, item.active, item.critical || 0);
+      return [
+        `"${name}"`,
+        `"${health.grade}"`,
+        `"${health.label}"`,
+        item.total,
+        item.active,
+        item.resolved,
+        `"${item.rate}%"`,
+        item.critical || 0
+      ].join(",");
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Executive_Brief_${scopeName || 'Report'}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (isPM) {
     const stateStats = {};
-    complaints.forEach((c) => {
+    complaints.filter(filterComplaint).forEach((c) => {
       const stateName = c.state ? c.state.trim() : 'Unknown';
       if (!stateStats[stateName]) {
         stateStats[stateName] = { total: 0, active: 0, resolved: 0 };
@@ -644,12 +902,15 @@ function ExecutiveMonitor({ user, complaints }) {
     let drillDownList = [];
     if (selectedState) {
       const deptStats = {};
-      complaints.filter(c => (c.state ? c.state.trim() : 'Unknown') === selectedState).forEach((c) => {
+      complaints.filter(c => (c.state ? c.state.trim() : 'Unknown') === selectedState && filterComplaint(c)).forEach((c) => {
         const dept = c.classification?.department || 'Unassigned';
         if (!deptStats[dept]) {
-          deptStats[dept] = { total: 0, active: 0, resolved: 0 };
+          deptStats[dept] = { total: 0, active: 0, resolved: 0, critical: 0 };
         }
         deptStats[dept].total += 1;
+        if ((c.classification?.priority || '').toLowerCase() === 'critical') {
+          deptStats[dept].critical += 1;
+        }
         if (c.status === 'resolved') {
           deptStats[dept].resolved += 1;
         } else {
@@ -669,12 +930,78 @@ function ExecutiveMonitor({ user, complaints }) {
           <Activity size={18} />
           <h2>National Executive Monitor (PM)</h2>
         </div>
-        <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
-          Select a state below to view department-level grievance performance.
-        </p>
+
+        {/* Controls Bar */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px', background: 'rgba(255, 255, 255, 0.03)', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--color-muted)', fontWeight: '600' }}>
+              <Filter size={14} />
+              <span>Priority:</span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {[['all', 'All'], ['high_critical', 'High & Critical'], ['critical', 'Critical']].map(([val, label]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setPriorityFilter(val)}
+                    style={{
+                      background: priorityFilter === val ? (val === 'critical' ? '#ef4444' : val === 'high_critical' ? '#f59e0b' : 'var(--color-primary)') : 'transparent',
+                      color: priorityFilter === val ? '#fff' : 'var(--color-muted)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '4px',
+                      padding: '2px 7px',
+                      fontSize: '0.72rem',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--color-muted)', fontWeight: '600' }}>
+              <span>Time:</span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {[['all', 'All Time'], ['7days', '7 Days'], ['30days', '30 Days']].map(([val, label]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setTimeFilter(val)}
+                    style={{
+                      background: timeFilter === val ? 'var(--color-primary)' : 'transparent',
+                      color: timeFilter === val ? '#fff' : 'var(--color-muted)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '4px',
+                      padding: '2px 7px',
+                      fontSize: '0.72rem',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              const isNational = !selectedState;
+              handleExportCSV(isNational ? statesList : drillDownList, selectedState || 'National', isNational);
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', padding: '5px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none', color: '#ffffff', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}
+          >
+            <Download size={14} />
+            <span>Export Executive Brief (CSV)</span>
+          </button>
+        </div>
+
         <div style={{ flex: '1 1 auto', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', alignContent: 'start', minHeight: '180px', padding: '4px' }}>
           {statesList.length === 0 ? (
-            <p className="muted" style={{ padding: '20px', gridColumn: '1 / -1', textAlign: 'center' }}>No state data found.</p>
+            <p className="muted" style={{ padding: '20px', gridColumn: '1 / -1', textAlign: 'center' }}>No state data matching filters.</p>
           ) : (
             statesList.map((st) => {
               const barColor = '#16a34a';
@@ -729,16 +1056,18 @@ function ExecutiveMonitor({ user, complaints }) {
                 Clear Selection
               </button>
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', alignContent: 'start', maxHeight: '240px', overflowY: 'auto', padding: '4px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px', alignContent: 'start', maxHeight: '240px', overflowY: 'auto', padding: '4px' }}>
               {drillDownList.map((dp) => {
                 const barColor = '#16a34a';
                 const shortName = getShortDeptName(dp.name);
                 const DeptIcon = getDeptIcon(dp.name);
+                const health = getDeptHealthGrade(dp.rate, dp.active, dp.critical);
                 
                 return (
                   <div 
                     key={dp.name}
                     className="monitor-card dept-card"
+                    style={{ borderLeft: `4px solid ${health.color}` }}
                     title={dp.name}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
@@ -750,18 +1079,40 @@ function ExecutiveMonitor({ user, complaints }) {
                           {shortName}
                         </span>
                       </div>
-                      <span className="pill" style={{ fontSize: '0.68rem', padding: '2px 5px', fontWeight: 'bold', flexShrink: 0 }}>{dp.total} Total</span>
+                      <span 
+                        style={{ 
+                          fontSize: '0.68rem', 
+                          padding: '2px 6px', 
+                          fontWeight: '800', 
+                          borderRadius: '4px',
+                          color: health.color,
+                          background: health.bg,
+                          border: `1px solid ${health.borderColor}`,
+                          flexShrink: 0
+                        }}
+                        title={`Health Score Grade: ${health.grade} (${health.label})`}
+                      >
+                        {health.grade} {health.label}
+                      </span>
                     </div>
                     
-                    <div style={{ display: 'flex', gap: '14px', fontSize: '0.75rem' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ color: '#ef4444', fontWeight: '700', fontSize: '0.9rem' }}>{dp.active}</span>
-                        <span className="stat-label" style={{ fontSize: '0.65rem', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Active</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', marginTop: '2px' }}>
+                      <div style={{ display: 'flex', gap: '14px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ color: '#ef4444', fontWeight: '700', fontSize: '0.95rem' }}>{dp.active}</span>
+                          <span className="stat-label" style={{ fontSize: '0.65rem', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Active</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ color: '#10b981', fontWeight: '700', fontSize: '0.95rem' }}>{dp.resolved}</span>
+                          <span className="stat-label" style={{ fontSize: '0.65rem', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Resolved</span>
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ color: '#10b981', fontWeight: '700', fontSize: '0.9rem' }}>{dp.resolved}</span>
-                        <span className="stat-label" style={{ fontSize: '0.65rem', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Resolved</span>
-                      </div>
+
+                      {dp.critical > 0 && (
+                        <span style={{ fontSize: '0.65rem', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>
+                          🔥 {dp.critical} Critical
+                        </span>
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -789,12 +1140,15 @@ function ExecutiveMonitor({ user, complaints }) {
   } else {
     const userState = user.state || 'Unknown';
     const deptStats = {};
-    complaints.forEach((c) => {
+    complaints.filter(filterComplaint).forEach((c) => {
       const dept = c.classification?.department || 'Unassigned';
       if (!deptStats[dept]) {
-        deptStats[dept] = { total: 0, active: 0, resolved: 0 };
+        deptStats[dept] = { total: 0, active: 0, resolved: 0, critical: 0 };
       }
       deptStats[dept].total += 1;
+      if ((c.classification?.priority || '').toLowerCase() === 'critical') {
+        deptStats[dept].critical += 1;
+      }
       if (c.status === 'resolved') {
         deptStats[dept].resolved += 1;
       } else {
@@ -810,26 +1164,93 @@ function ExecutiveMonitor({ user, complaints }) {
 
     return (
       <div className="panel executive-monitor" style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '14px' }}>
-        <div className="panelTitle" style={{ marginBottom: '8px' }}>
-          <Activity size={18} />
-          <h2>State Executive Monitor ({userState})</h2>
+        <div className="panelTitle" style={{ marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Activity size={18} />
+            <h2>State Executive Monitor ({userState})</h2>
+          </div>
         </div>
-        <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
-          Administrative performance monitoring for departments within <strong>{userState}</strong>.
-        </p>
-        <div style={{ flex: '1 1 auto', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', alignContent: 'start', minHeight: '260px', padding: '4px' }}>
+        
+        {/* Controls Bar */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px', background: 'rgba(255, 255, 255, 0.03)', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--color-muted)', fontWeight: '600' }}>
+              <Filter size={14} />
+              <span>Priority:</span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {[['all', 'All'], ['high_critical', 'High & Critical'], ['critical', 'Critical']].map(([val, label]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setPriorityFilter(val)}
+                    style={{
+                      background: priorityFilter === val ? (val === 'critical' ? '#ef4444' : val === 'high_critical' ? '#f59e0b' : 'var(--color-primary)') : 'transparent',
+                      color: priorityFilter === val ? '#fff' : 'var(--color-muted)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '4px',
+                      padding: '2px 7px',
+                      fontSize: '0.72rem',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--color-muted)', fontWeight: '600' }}>
+              <span>Time:</span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {[['all', 'All Time'], ['7days', '7 Days'], ['30days', '30 Days']].map(([val, label]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setTimeFilter(val)}
+                    style={{
+                      background: timeFilter === val ? 'var(--color-primary)' : 'transparent',
+                      color: timeFilter === val ? '#fff' : 'var(--color-muted)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '4px',
+                      padding: '2px 7px',
+                      fontSize: '0.72rem',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => handleExportCSV(deptsList, userState)}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', padding: '5px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none', color: '#ffffff', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}
+          >
+            <Download size={14} />
+            <span>Export Executive Brief (CSV)</span>
+          </button>
+        </div>
+
+        <div style={{ flex: '1 1 auto', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px', alignContent: 'start', minHeight: '260px', padding: '4px' }}>
           {deptsList.length === 0 ? (
-            <p className="muted" style={{ padding: '20px', gridColumn: '1 / -1', textAlign: 'center' }}>No department data found.</p>
+            <p className="muted" style={{ padding: '20px', gridColumn: '1 / -1', textAlign: 'center' }}>No department data matching active filters.</p>
           ) : (
             deptsList.map((dp) => {
               const barColor = '#16a34a';
               const shortName = getShortDeptName(dp.name);
               const DeptIcon = getDeptIcon(dp.name);
+              const health = getDeptHealthGrade(dp.rate, dp.active, dp.critical);
               
               return (
                 <div 
                   key={dp.name} 
                   className="monitor-card dept-card"
+                  style={{ borderLeft: `4px solid ${health.color}` }}
                   title={dp.name}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
@@ -841,18 +1262,42 @@ function ExecutiveMonitor({ user, complaints }) {
                         {shortName}
                       </span>
                     </div>
-                    <span className="pill" style={{ fontSize: '0.7rem', padding: '2px 6px', fontWeight: 'bold', flexShrink: 0 }}>{dp.total} Total</span>
+                    
+                    {/* Health Grade Badge */}
+                    <span 
+                      style={{ 
+                        fontSize: '0.68rem', 
+                        padding: '2px 6px', 
+                        fontWeight: '800', 
+                        borderRadius: '4px',
+                        color: health.color,
+                        background: health.bg,
+                        border: `1px solid ${health.borderColor}`,
+                        flexShrink: 0
+                      }}
+                      title={`Health Score Grade: ${health.grade} (${health.label})`}
+                    >
+                      {health.grade} {health.label}
+                    </span>
                   </div>
                   
-                  <div style={{ display: 'flex', gap: '16px', fontSize: '0.8rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ color: '#ef4444', fontWeight: '700', fontSize: '1rem' }}>{dp.active}</span>
-                      <span className="stat-label" style={{ fontSize: '0.68rem', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Active</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', marginTop: '2px' }}>
+                    <div style={{ display: 'flex', gap: '14px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ color: '#ef4444', fontWeight: '700', fontSize: '0.95rem' }}>{dp.active}</span>
+                        <span className="stat-label" style={{ fontSize: '0.65rem', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Active</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ color: '#10b981', fontWeight: '700', fontSize: '0.95rem' }}>{dp.resolved}</span>
+                        <span className="stat-label" style={{ fontSize: '0.65rem', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Resolved</span>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ color: '#10b981', fontWeight: '700', fontSize: '1rem' }}>{dp.resolved}</span>
-                      <span className="stat-label" style={{ fontSize: '0.68rem', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Resolved</span>
-                    </div>
+
+                    {dp.critical > 0 && (
+                      <span style={{ fontSize: '0.65rem', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>
+                        🔥 {dp.critical} Critical
+                      </span>
+                    )}
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1742,8 +2187,17 @@ function App() {
             
             {showNotifications && (
               <div className="notificationDropdown">
-                <div className="notificationDropdownHeader">
-                  <h3>Notifications</h3>
+                <div className="notificationDropdownHeader" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderBottom: '1px solid var(--border-color)' }}>
+                  <h3 style={{ margin: 0, fontSize: '0.88rem', fontWeight: 'bold' }}>Notifications</h3>
+                  {notifications.some(n => !n.read) && (
+                    <button 
+                      type="button" 
+                      onClick={markAllNotificationsAsRead}
+                      style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      Mark all read
+                    </button>
+                  )}
                 </div>
                 <div className="notificationDropdownList">
                   {notifications.length === 0 ? (
@@ -2035,43 +2489,10 @@ function App() {
                             </div>
                           </div>
                           <ComplaintTimeline complaint={complaint} />
+                          <PhotoComparisonCard complaint={complaint} />
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: complaint.photo_filename || complaint.resolution_photo_filename ? '1fr 1fr' : '1fr', gap: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
-                          {complaint.photo_filename && (
-                            <div>
-                              <h4 style={{ margin: '0 0 8px', color: '#2b6f6a', fontSize: '0.85rem', textTransform: 'uppercase' }}>Original Evidence Photo</h4>
-                              <a href={`${API_BASE}/uploads/${complaint.photo_filename}`} target="_blank" rel="noreferrer">
-                                <img 
-                                  src={`${API_BASE}/uploads/${complaint.photo_filename}`} 
-                                  alt="Evidence Photo" 
-                                  style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px', border: '1px solid #cbd8d5', objectFit: 'cover' }} 
-                                />
-                              </a>
-                            </div>
-                          )}
-                          
-                          {complaint.status === 'resolved' && (
-                            <div>
-                              <h4 style={{ margin: '0 0 8px', color: '#174b2a', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <CheckCircle2 size={16} color="#174b2a" /> Resolution Proof
-                              </h4>
-                              <div style={{ marginBottom: '8px', fontSize: '0.85rem', color: '#334155' }}>
-                                Completed by <strong>@{complaint.completed_by}</strong> on {complaint.completed_at ? new Date(complaint.completed_at).toLocaleString() : 'N/A'}
-                              </div>
-                              {complaint.resolution_photo_filename && (
-                                <a href={`${API_BASE}/uploads/${complaint.resolution_photo_filename}`} target="_blank" rel="noreferrer">
-                                  <img 
-                                    src={`${API_BASE}/uploads/${complaint.resolution_photo_filename}`} 
-                                    alt="Resolution Proof" 
-                                    style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px', border: '1px solid #9edab4', objectFit: 'cover' }} 
-                                  />
-                                </a>
-                              )}
-                            </div>
-                          )}
-
-                          {!['Citizen', 'Chief Minister', 'Prime Minister'].includes(session.user.user_type || 'Citizen') && complaint.status !== 'resolved' && (
+                        {!['Citizen', 'Chief Minister', 'Prime Minister'].includes(session.user.user_type || 'Citizen') && complaint.status !== 'resolved' && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
                               {/* Add Update Comment Form */}
                               <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '16px' }}>
@@ -2265,8 +2686,7 @@ function App() {
                             </div>
                           )}
                         </div>
-                      </div>
-                    )}
+                      )}
                   </React.Fragment>
                 );
               })}
@@ -2353,39 +2773,7 @@ function App() {
                             </div>
                           </div>
                           <ComplaintTimeline complaint={complaint} />
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: complaint.photo_filename || complaint.resolution_photo_filename ? '1fr 1fr' : '1fr', gap: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-                          {complaint.photo_filename && (
-                            <div>
-                              <h4 style={{ margin: '0 0 8px', fontSize: '0.85rem', textTransform: 'uppercase' }}>Original Evidence Photo</h4>
-                              <a href={`${API_BASE}/uploads/${complaint.photo_filename}`} target="_blank" rel="noreferrer">
-                                <img 
-                                  src={`${API_BASE}/uploads/${complaint.photo_filename}`} 
-                                  alt="Evidence Photo" 
-                                  style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px', border: '1px solid var(--border-color)', objectFit: 'cover' }} 
-                                />
-                              </a>
-                            </div>
-                          )}
-                          
-                          {complaint.resolution_photo_filename && (
-                            <div>
-                              <h4 style={{ margin: '0 0 8px', color: '#174b2a', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <CheckCircle2 size={16} color="#174b2a" /> Resolution Proof
-                              </h4>
-                              <div style={{ marginBottom: '8px', fontSize: '0.85rem', color: '#334155' }}>
-                                Completed by <strong>@{complaint.completed_by}</strong> on {complaint.completed_at ? new Date(complaint.completed_at).toLocaleString() : 'N/A'}
-                              </div>
-                              <a href={`${API_BASE}/uploads/${complaint.resolution_photo_filename}`} target="_blank" rel="noreferrer">
-                                <img 
-                                  src={`${API_BASE}/uploads/${complaint.resolution_photo_filename}`} 
-                                  alt="Resolution Proof" 
-                                  style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px', border: '1px solid #9edab4', objectFit: 'cover' }} 
-                                />
-                              </a>
-                            </div>
-                          )}
+                          <PhotoComparisonCard complaint={complaint} />
                         </div>
                       </div>
                     )}
