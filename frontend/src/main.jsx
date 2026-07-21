@@ -24,14 +24,20 @@ import {
   Flame,
   GraduationCap,
   HardHat,
+  Headphones,
   HeartPulse,
+  HelpCircle,
   Leaf,
   LogOut,
+  Mail,
   MapPin,
   MessageSquare,
   Mic,
+  Phone,
+  PhoneCall,
   RefreshCw,
   Scale,
+  Search,
   Send,
   Shield,
   ShieldCheck,
@@ -1806,7 +1812,363 @@ function AIChatAssistantWidget({ session, refresh }) {
   );
 }
 
+function FAQSection() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [expandedIndex, setExpandedIndex] = useState(null);
+
+  const faqs = [
+    {
+      category: 'Filing & Intake',
+      question: 'How does CivicPulse AI auto-classify and route my complaint?',
+      answer: 'CivicPulse uses advanced Multimodal AI and Gemini Language Models to analyze your grievance text, voice transcripts, and photo evidence. It automatically assigns the responsible government department (e.g. Water Works, Public Works, Power Grid), determines priority level (Critical, High, Medium, Low), and routes it directly to the designated official.'
+    },
+    {
+      category: 'Filing & Intake',
+      question: 'What happens when an AI Duplicate Grievance Alert pops up?',
+      answer: 'Our location-aware AI engine checks nearby active reports within your ward/neighborhood. If a similar issue was recently filed, an alert will display. You can click "👍 Upvote & Boost Priority" to join existing citizens in escalating the ticket, or click "Submit New Anyway" if your issue is distinct.'
+    },
+    {
+      category: 'Filing & Intake',
+      question: 'Can I dictate my complaint using Voice-to-Text?',
+      answer: 'Yes! When filing a complaint, click the Microphone 🎙️ button to speak your grievance in natural language. Our system transcribes your voice directly into the report.'
+    },
+    {
+      category: 'Tracking & Timeline',
+      question: 'What do the 4 stages on the Complaint Timeline mean?',
+      answer: 'Every complaint progresses through 4 clear lifecycle stages:\n1. Reported: Grievance logged by citizen.\n2. AI Routed: Machine learning assigns department & priority.\n3. In Progress: Field officer initiated resolution work.\n4. Resolved: Issue fixed with photo proof & timestamp uploaded by officer.'
+    },
+    {
+      category: 'Tracking & Timeline',
+      question: 'How is resolution verified by department officials?',
+      answer: 'Field officers must attach a geo-tagged resolution photo proof before marking a ticket as Resolved. Citizens and administrators can compare the original reported photo against the official resolution proof side-by-side on the dashboard.'
+    },
+    {
+      category: 'Notifications & Alerts',
+      question: 'How do I receive instant status updates on Telegram?',
+      answer: 'During registration or profile settings, add your Telegram Chat ID. CivicPulse will automatically send instant push notifications whenever your grievance status changes or an official posts a progress update.'
+    },
+    {
+      category: 'Department & Governance',
+      question: 'What is the Executive Monitor dashboard for Chief Ministers & PMs?',
+      answer: 'The Executive Monitor provides real-time state-level and national-level oversight, allowing CMs and national administrators to track department resolution rates, bottleneck areas, hotspot maps, and download Executive CSV Briefs.'
+    }
+  ];
+
+  const categories = ['All', 'Filing & Intake', 'Tracking & Timeline', 'Notifications & Alerts', 'Department & Governance'];
+
+  const filteredFaqs = faqs.filter(faq => {
+    const matchesCategory = activeCategory === 'All' || faq.category === activeCategory;
+    const matchesSearch = faq.question.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          faq.answer.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  return (
+    <section className="panel" style={{ padding: '28px', maxWidth: '1000px', margin: '0 auto 30px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+        <div style={{ padding: '10px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6' }}>
+          <HelpCircle size={28} />
+        </div>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--color-main)' }}>Frequently Asked Questions (FAQs)</h2>
+          <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--color-muted)' }}>
+            Find answers to common questions about filing grievances, AI routing, tracking progress, and resolution proof.
+          </p>
+        </div>
+      </div>
+
+      {/* Search & Filter Bar */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '20px', alignItems: 'center' }}>
+        <div style={{ flex: 1, minWidth: '260px', position: 'relative' }}>
+          <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-muted)' }} />
+          <input
+            type="text"
+            placeholder="Search FAQs by keywords..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ width: '100%', padding: '10px 14px 10px 36px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)', fontSize: '0.88rem' }}
+          />
+        </div>
+        
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {categories.map(cat => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setActiveCategory(cat)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '20px',
+                fontSize: '0.78rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                border: activeCategory === cat ? '1px solid #3b82f6' : '1px solid var(--border-color)',
+                background: activeCategory === cat ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.03)',
+                color: activeCategory === cat ? '#60a5fa' : 'var(--color-muted)'
+              }}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Accordion FAQ List */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {filteredFaqs.length === 0 ? (
+          <p style={{ padding: '30px', textAlign: 'center', color: 'var(--color-muted)' }}>No matching FAQs found for your search query.</p>
+        ) : (
+          filteredFaqs.map((faq, idx) => {
+            const isOpen = expandedIndex === idx;
+            return (
+              <div 
+                key={idx}
+                style={{
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '10px',
+                  background: isOpen ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.1)',
+                  overflow: 'hidden',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setExpandedIndex(isOpen ? null : idx)}
+                  style={{
+                    width: '100%',
+                    padding: '14px 18px',
+                    display: 'flex',
+                    justify: 'space-between',
+                    alignItems: 'center',
+                    background: 'none',
+                    border: 'none',
+                    textAlign: 'left',
+                    color: 'var(--color-main)',
+                    fontSize: '0.95rem',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', fontWeight: 'bold' }}>{faq.category}</span>
+                    {faq.question}
+                  </span>
+                  {isOpen ? <ChevronDown size={18} color="#60a5fa" /> : <ChevronRight size={18} color="var(--color-muted)" />}
+                </button>
+
+                {isOpen && (
+                  <div style={{ padding: '0 18px 16px', color: 'var(--color-muted)', fontSize: '0.88rem', lineHeight: '1.6', borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: '4px', paddingTop: '12px', whiteSpace: 'pre-line' }}>
+                    {faq.answer}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ContactUsSection({ user, session }) {
+  const [form, setForm] = useState({ name: user?.full_name || '', email: '', department: 'Public Works', subject: '', message: '' });
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setSubmitted(true);
+    setTimeout(() => {
+      setSubmitted(false);
+      setForm({ name: user?.full_name || '', email: '', department: 'Public Works', subject: '', message: '' });
+    }, 4000);
+  };
+
+  return (
+    <section className="panel" style={{ padding: '28px', maxWidth: '1100px', margin: '0 auto 30px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+        <div style={{ padding: '10px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
+          <PhoneCall size={28} />
+        </div>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--color-main)' }}>Contact Us & Nodal Helplines</h2>
+          <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--color-muted)' }}>
+            Get in touch with department nodal officers, emergency civic support, or send direct inquiries.
+          </p>
+        </div>
+      </div>
+
+      {/* Emergency Helpline Cards Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', marginBottom: '30px' }}>
+        <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444', fontWeight: 'bold', marginBottom: '6px' }}>
+            <Phone size={18} /> Emergency Civic Line
+          </div>
+          <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#ffffff', fontFamily: 'monospace' }}>112 / 1800-11-2024</div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)', display: 'block', marginTop: '4px' }}>Toll-Free • Available 24x7</span>
+        </div>
+
+        <div style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '12px', padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#3b82f6', fontWeight: 'bold', marginBottom: '6px' }}>
+            <Building2 size={18} /> Central Grievance Cell
+          </div>
+          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#ffffff', fontFamily: 'monospace' }}>011-2309-8800</div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)', display: 'block', marginTop: '4px' }}>Cabinet Secretariat, North Block</span>
+        </div>
+
+        <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontWeight: 'bold', marginBottom: '6px' }}>
+            <Mail size={18} /> Support Email
+          </div>
+          <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#ffffff' }}>support@civicpulse.gov.in</div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)', display: 'block', marginTop: '4px' }}>Response time: &lt; 24 hours</span>
+        </div>
+      </div>
+
+      {/* Main Grid: Contact Form & Department Directory */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px' }}>
+        {/* Direct Inquiry Form */}
+        <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '20px' }}>
+          <h3 style={{ margin: '0 0 16px', fontSize: '1.05rem', color: 'var(--color-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <MessageSquare size={18} color="#3b82f6" /> Send Direct Message to Nodal Officer
+          </h3>
+
+          {submitted ? (
+            <div style={{ padding: '20px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', borderRadius: '8px', color: '#34d399', textAlign: 'center', fontWeight: 'bold' }}>
+              ✓ Thank you! Your message has been routed to the Nodal Officer. Reference Ticket ID will be sent to your phone.
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+                  Your Name
+                  <input
+                    required
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#ffffff' }}
+                  />
+                </label>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+                  Email / Contact
+                  <input
+                    required
+                    type="text"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    placeholder="email or phone number"
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#ffffff' }}
+                  />
+                </label>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+                  Target Department
+                  <select
+                    value={form.department}
+                    onChange={(e) => setForm({ ...form, department: e.target.value })}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#ffffff' }}
+                  >
+                    <option value="Public Works">Public Works (Roads & Drainage)</option>
+                    <option value="Water Works">Water Works & Sanitation</option>
+                    <option value="Power Grid">Electricity & Power Grid</option>
+                    <option value="Waste Management">Waste & Sanitation</option>
+                    <option value="Health & Medical">Health & Medical Services</option>
+                  </select>
+                </label>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+                  Subject
+                  <input
+                    required
+                    type="text"
+                    value={form.subject}
+                    onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                    placeholder="e.g. Urgent pipeline repair"
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#ffffff' }}
+                  />
+                </label>
+              </div>
+
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+                Message / Inquiry Details
+                <textarea
+                  required
+                  rows={4}
+                  value={form.message}
+                  onChange={(e) => setForm({ ...form, message: e.target.value })}
+                  placeholder="Describe your inquiry or request for the nodal department..."
+                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#ffffff' }}
+                />
+              </label>
+
+              <button
+                type="submit"
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justify: 'center',
+                  gap: '8px',
+                  marginTop: '4px'
+                }}
+              >
+                <Send size={16} /> Send Inquiry
+              </button>
+            </form>
+          )}
+        </div>
+
+        {/* Key Department Directory & Office Info */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '18px' }}>
+            <h4 style={{ margin: '0 0 10px', fontSize: '0.9rem', color: 'var(--color-main)', textTransform: 'uppercase' }}>Department Toll-Free Lines</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.82rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <span style={{ color: 'var(--color-muted)' }}>💧 Water Supply & Leakage</span>
+                <strong style={{ color: '#60a5fa', fontFamily: 'monospace' }}>1800-425-0011</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <span style={{ color: 'var(--color-muted)' }}>🚧 Roads & Potholes (PWD)</span>
+                <strong style={{ color: '#60a5fa', fontFamily: 'monospace' }}>1800-180-2222</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <span style={{ color: 'var(--color-muted)' }}>⚡ Electricity & Power Outages</span>
+                <strong style={{ color: '#60a5fa', fontFamily: 'monospace' }}>1912</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-muted)' }}>🧹 Sanitation & Solid Waste</span>
+                <strong style={{ color: '#60a5fa', fontFamily: 'monospace' }}>1800-11-0033</strong>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '18px' }}>
+            <h4 style={{ margin: '0 0 8px', fontSize: '0.9rem', color: 'var(--color-main)', textTransform: 'uppercase' }}>Headquarters Address</h4>
+            <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-muted)', lineHeight: '1.5' }}>
+              <strong>CivicPulse National Grievance Monitoring Hub</strong><br />
+              Department of Administrative Reforms & Public Grievances (DARPG)<br />
+              Sardar Patel Bhawan, Parliament Street, New Delhi - 110001
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function App() {
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [session, setSession] = useState(() => {
     const saved = localStorage.getItem(AUTH_STORAGE_KEY);
     return saved ? JSON.parse(saved) : null;
@@ -2439,9 +2801,74 @@ function App() {
   return (
     <main className="shell">
       <header className="topbar">
-        <div>
-          <p className="eyebrow">AI grievance redressal</p>
-          <h1>CivicPulse</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <div>
+            <p className="eyebrow">AI grievance redressal</p>
+            <h1>CivicPulse</h1>
+          </div>
+
+          <div className="navTabs" style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.25)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+            <button
+              type="button"
+              onClick={() => setActiveTab('dashboard')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                background: activeTab === 'dashboard' ? 'var(--color-primary, #3b82f6)' : 'transparent',
+                color: activeTab === 'dashboard' ? '#ffffff' : 'var(--color-muted)',
+                fontWeight: 'bold',
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <Activity size={15} /> Dashboard
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('faqs')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                background: activeTab === 'faqs' ? 'var(--color-primary, #3b82f6)' : 'transparent',
+                color: activeTab === 'faqs' ? '#ffffff' : 'var(--color-muted)',
+                fontWeight: 'bold',
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <HelpCircle size={15} /> FAQs
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('contact')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                background: activeTab === 'contact' ? 'var(--color-primary, #3b82f6)' : 'transparent',
+                color: activeTab === 'contact' ? '#ffffff' : 'var(--color-muted)',
+                fontWeight: 'bold',
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <PhoneCall size={15} /> Contact Us
+            </button>
+          </div>
         </div>
         <div className="topActions">
           <div className="accountBadge">
@@ -2516,7 +2943,12 @@ function App() {
       </section>
       {notice && <div className={`notice ${notice.type}`}>{notice.text}</div>}
 
-      <AnalyticsDashboard user={session.user} complaints={complaints} />
+      {activeTab === 'faqs' && <FAQSection />}
+      {activeTab === 'contact' && <ContactUsSection user={session.user} session={session} />}
+
+      {activeTab === 'dashboard' && (
+        <>
+          <AnalyticsDashboard user={session.user} complaints={complaints} />
 
       <section className="workspace">
         {session.user.user_type === 'Admin' ? (
@@ -3078,6 +3510,8 @@ function App() {
           )}
         </section>
       </div>
+      )}
+      </>
       )}
 
 
