@@ -44,6 +44,8 @@ import {
   ShieldCheck,
   Sprout,
   Sparkles,
+  Sun,
+  Moon,
   ThumbsUp,
   User,
   Trees,
@@ -642,7 +644,7 @@ function AnalyticsDashboard({ user, complaints }) {
                           <span className="muted">{dept.active} Active / {dept.resolved} Resolved ({dept.total} Total)</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div className="progress-container" style={{ flex: 1, height: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', overflow: 'hidden' }}>
+                          <div className="progress-container" style={{ flex: 1, height: '12px', background: 'var(--border-color)', borderRadius: '6px', overflow: 'hidden' }}>
                             <div style={{
                               width: `${pct}%`,
                               height: '100%',
@@ -651,7 +653,7 @@ function AnalyticsDashboard({ user, complaints }) {
                               transition: 'width 0.5s ease'
                             }} />
                           </div>
-                          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '36px', textAlign: 'right' }}>{dept.rate}%</span>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '36px', textAlign: 'right', color: 'var(--color-main)' }}>{dept.rate}%</span>
                         </div>
                       </div>
                     );
@@ -674,7 +676,7 @@ function AnalyticsDashboard({ user, complaints }) {
                           <span className="muted">{st.active} Active / {st.resolved} Resolved</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div className="progress-container" style={{ flex: 1, height: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', overflow: 'hidden' }}>
+                          <div className="progress-container" style={{ flex: 1, height: '12px', background: 'var(--border-color)', borderRadius: '6px', overflow: 'hidden' }}>
                             <div style={{
                               width: `${pct}%`,
                               height: '100%',
@@ -683,7 +685,7 @@ function AnalyticsDashboard({ user, complaints }) {
                               transition: 'width 0.5s ease'
                             }} />
                           </div>
-                          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '36px', textAlign: 'right' }}>{st.rate}%</span>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '36px', textAlign: 'right', color: 'var(--color-main)' }}>{st.rate}%</span>
                         </div>
                       </div>
                     );
@@ -2007,7 +2009,7 @@ function ContactUsSection({ user, session }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444', fontWeight: 'bold', marginBottom: '6px' }}>
             <Phone size={18} /> Emergency Civic Line
           </div>
-          <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#ffffff', fontFamily: 'monospace' }}>112 / 1800-11-2024</div>
+          <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: 'var(--color-main)', fontFamily: 'monospace' }}>112 / 1800-11-2024</div>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)', display: 'block', marginTop: '4px' }}>Toll-Free • Available 24x7</span>
         </div>
 
@@ -2015,7 +2017,7 @@ function ContactUsSection({ user, session }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#3b82f6', fontWeight: 'bold', marginBottom: '6px' }}>
             <Building2 size={18} /> Central Grievance Cell
           </div>
-          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#ffffff', fontFamily: 'monospace' }}>011-2309-8800</div>
+          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--color-main)', fontFamily: 'monospace' }}>011-2309-8800</div>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)', display: 'block', marginTop: '4px' }}>Cabinet Secretariat, North Block</span>
         </div>
 
@@ -2023,7 +2025,7 @@ function ContactUsSection({ user, session }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontWeight: 'bold', marginBottom: '6px' }}>
             <Mail size={18} /> Support Email
           </div>
-          <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#ffffff' }}>support@civicpulse.gov.in</div>
+          <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: 'var(--color-main)' }}>support@civicpulse.gov.in</div>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)', display: 'block', marginTop: '4px' }}>Response time: &lt; 24 hours</span>
         </div>
       </div>
@@ -2050,7 +2052,7 @@ function ContactUsSection({ user, session }) {
                     type="text"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#ffffff' }}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
                   />
                 </label>
 
@@ -2062,7 +2064,7 @@ function ContactUsSection({ user, session }) {
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     placeholder="email or phone number"
-                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#ffffff' }}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
                   />
                 </label>
               </div>
@@ -2073,7 +2075,7 @@ function ContactUsSection({ user, session }) {
                   <select
                     value={form.department}
                     onChange={(e) => setForm({ ...form, department: e.target.value })}
-                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#ffffff' }}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
                   >
                     <option value="Public Works">Public Works (Roads & Drainage)</option>
                     <option value="Water Works">Water Works & Sanitation</option>
@@ -2091,7 +2093,7 @@ function ContactUsSection({ user, session }) {
                     value={form.subject}
                     onChange={(e) => setForm({ ...form, subject: e.target.value })}
                     placeholder="e.g. Urgent pipeline repair"
-                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#ffffff' }}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
                   />
                 </label>
               </div>
@@ -2104,7 +2106,7 @@ function ContactUsSection({ user, session }) {
                   value={form.message}
                   onChange={(e) => setForm({ ...form, message: e.target.value })}
                   placeholder="Describe your inquiry or request for the nodal department..."
-                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#ffffff' }}
+                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
                 />
               </label>
 
@@ -2308,7 +2310,7 @@ function UserProfileSection({ session, setSession, complaints }) {
                 type="text"
                 value={profileForm.full_name}
                 onChange={(e) => setProfileForm({ ...profileForm, full_name: e.target.value })}
-                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#ffffff' }}
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
               />
             </label>
 
@@ -2320,7 +2322,7 @@ function UserProfileSection({ session, setSession, complaints }) {
                   type="text"
                   value={profileForm.phone}
                   onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#ffffff' }}
+                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
                 />
               </label>
 
@@ -2331,7 +2333,7 @@ function UserProfileSection({ session, setSession, complaints }) {
                   placeholder="e.g. West Bengal"
                   value={profileForm.state}
                   onChange={(e) => setProfileForm({ ...profileForm, state: e.target.value })}
-                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#ffffff' }}
+                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
                 />
               </label>
             </div>
@@ -2343,7 +2345,7 @@ function UserProfileSection({ session, setSession, complaints }) {
                 placeholder="Optional: Enter Telegram Chat ID"
                 value={profileForm.telegram_chat_id}
                 onChange={(e) => setProfileForm({ ...profileForm, telegram_chat_id: e.target.value })}
-                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#ffffff' }}
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
               />
             </label>
 
@@ -2386,7 +2388,7 @@ function UserProfileSection({ session, setSession, complaints }) {
                 placeholder="••••••••"
                 value={passForm.old_password}
                 onChange={(e) => setPassForm({ ...passForm, old_password: e.target.value })}
-                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#ffffff' }}
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
               />
             </label>
 
@@ -2398,7 +2400,7 @@ function UserProfileSection({ session, setSession, complaints }) {
                 placeholder="At least 6 characters"
                 value={passForm.new_password}
                 onChange={(e) => setPassForm({ ...passForm, new_password: e.target.value })}
-                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#ffffff' }}
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
               />
             </label>
 
@@ -2410,7 +2412,7 @@ function UserProfileSection({ session, setSession, complaints }) {
                 placeholder="Re-enter new password"
                 value={passForm.confirm_password}
                 onChange={(e) => setPassForm({ ...passForm, confirm_password: e.target.value })}
-                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#ffffff' }}
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
               />
             </label>
 
@@ -2627,9 +2629,9 @@ function ReportsAndChartsSection({ user, complaints }) {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '4px' }}>
                 <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Critical Priority</span>
-                <span>{priorityCounts.critical} cases ({((priorityCounts.critical / totalComplaints) * 100).toFixed(0)}%)</span>
+                <span style={{ color: 'var(--color-main)', fontWeight: 'bold' }}>{priorityCounts.critical} cases ({((priorityCounts.critical / totalComplaints) * 100).toFixed(0)}%)</span>
               </div>
-              <div style={{ height: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '5px', overflow: 'hidden' }}>
+              <div style={{ height: '10px', background: 'var(--border-color)', borderRadius: '5px', overflow: 'hidden' }}>
                 <div style={{ width: `${(priorityCounts.critical / totalComplaints) * 100}%`, height: '100%', background: '#ef4444', borderRadius: '5px' }} />
               </div>
             </div>
@@ -2638,9 +2640,9 @@ function ReportsAndChartsSection({ user, complaints }) {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '4px' }}>
                 <span style={{ color: '#f97316', fontWeight: 'bold' }}>High Priority</span>
-                <span>{priorityCounts.high} cases ({((priorityCounts.high / totalComplaints) * 100).toFixed(0)}%)</span>
+                <span style={{ color: 'var(--color-main)', fontWeight: 'bold' }}>{priorityCounts.high} cases ({((priorityCounts.high / totalComplaints) * 100).toFixed(0)}%)</span>
               </div>
-              <div style={{ height: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '5px', overflow: 'hidden' }}>
+              <div style={{ height: '10px', background: 'var(--border-color)', borderRadius: '5px', overflow: 'hidden' }}>
                 <div style={{ width: `${(priorityCounts.high / totalComplaints) * 100}%`, height: '100%', background: '#f97316', borderRadius: '5px' }} />
               </div>
             </div>
@@ -2649,9 +2651,9 @@ function ReportsAndChartsSection({ user, complaints }) {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '4px' }}>
                 <span style={{ color: '#eab308', fontWeight: 'bold' }}>Medium Priority</span>
-                <span>{priorityCounts.medium} cases ({((priorityCounts.medium / totalComplaints) * 100).toFixed(0)}%)</span>
+                <span style={{ color: 'var(--color-main)', fontWeight: 'bold' }}>{priorityCounts.medium} cases ({((priorityCounts.medium / totalComplaints) * 100).toFixed(0)}%)</span>
               </div>
-              <div style={{ height: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '5px', overflow: 'hidden' }}>
+              <div style={{ height: '10px', background: 'var(--border-color)', borderRadius: '5px', overflow: 'hidden' }}>
                 <div style={{ width: `${(priorityCounts.medium / totalComplaints) * 100}%`, height: '100%', background: '#eab308', borderRadius: '5px' }} />
               </div>
             </div>
@@ -2660,9 +2662,9 @@ function ReportsAndChartsSection({ user, complaints }) {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '4px' }}>
                 <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>Low Priority</span>
-                <span>{priorityCounts.low} cases ({((priorityCounts.low / totalComplaints) * 100).toFixed(0)}%)</span>
+                <span style={{ color: 'var(--color-main)', fontWeight: 'bold' }}>{priorityCounts.low} cases ({((priorityCounts.low / totalComplaints) * 100).toFixed(0)}%)</span>
               </div>
-              <div style={{ height: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '5px', overflow: 'hidden' }}>
+              <div style={{ height: '10px', background: 'var(--border-color)', borderRadius: '5px', overflow: 'hidden' }}>
                 <div style={{ width: `${(priorityCounts.low / totalComplaints) * 100}%`, height: '100%', background: '#3b82f6', borderRadius: '5px' }} />
               </div>
             </div>
@@ -2684,10 +2686,10 @@ function ReportsAndChartsSection({ user, complaints }) {
                 return (
                   <div key={cat} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                      <span style={{ textTransform: 'capitalize', fontWeight: '600' }}>{cat.replace('_', ' ')}</span>
-                      <span style={{ color: 'var(--color-muted)' }}>{count} ({pct}%)</span>
+                      <span style={{ textTransform: 'capitalize', fontWeight: '600', color: 'var(--color-main)' }}>{cat.replace('_', ' ')}</span>
+                      <span style={{ color: 'var(--color-muted)', fontWeight: 'bold' }}>{count} ({pct}%)</span>
                     </div>
-                    <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
                       <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)', borderRadius: '4px' }} />
                     </div>
                   </div>
@@ -2702,6 +2704,19 @@ function ReportsAndChartsSection({ user, complaints }) {
 }
 
 function App() {
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('civicpulse_theme') || 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('civicpulse_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [session, setSession] = useState(() => {
     const saved = localStorage.getItem(AUTH_STORAGE_KEY);
@@ -3499,6 +3514,10 @@ function App() {
               </div>
             )}
           </div>
+
+          <button className="iconButton" onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}>
+            {theme === 'dark' ? <Sun size={18} color="#f59e0b" /> : <Moon size={18} color="#6366f1" />}
+          </button>
 
           <button className="iconButton" onClick={refresh} title="Refresh dashboard">
             <RefreshCw size={18} />
