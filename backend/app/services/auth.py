@@ -135,6 +135,49 @@ class UserStore:
         self._write_users(updated)
         return True
 
+    def update_profile(self, username: str, full_name: str | None, phone: str | None, state: str | None, telegram_chat_id: str | None) -> UserPublic:
+        normalized = _normalize_username(username)
+        users = self._read_users()
+        target_user: User | None = None
+        
+        for user in users:
+            if user.username.lower() == normalized:
+                if full_name and full_name.strip():
+                    user.full_name = full_name.strip()
+                if phone and phone.strip():
+                    user.phone = _normalize_phone(phone)
+                if state is not None:
+                    user.state = state.strip() if state else None
+                if telegram_chat_id is not None:
+                    user.telegram_chat_id = telegram_chat_id.strip() if telegram_chat_id else None
+                target_user = user
+                break
+                
+        if not target_user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+            
+        self._write_users(users)
+        return _public_user(target_user)
+
+    def change_password(self, username: str, old_password: str, new_password: str) -> UserPublic:
+        normalized = _normalize_username(username)
+        users = self._read_users()
+        target_user: User | None = None
+        
+        for user in users:
+            if user.username.lower() == normalized:
+                if not _verify_password(old_password, user.password_hash):
+                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect.")
+                user.password_hash = _hash_password(new_password)
+                target_user = user
+                break
+                
+        if not target_user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+            
+        self._write_users(users)
+        return _public_user(target_user)
+
     def _read_users(self) -> list[User]:
         if self._firestore_client:
             docs = self._firestore_client.collection("users").stream()

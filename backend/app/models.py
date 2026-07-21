@@ -195,3 +195,15 @@ class AdminComplaintUpdate(BaseModel):
     priority: str | None = None
     category: str | None = None
     status: str | None = None
+
+
+class UserProfileUpdate(BaseModel):
+    full_name: str | None = None
+    phone: str | None = None
+    state: str | None = None
+    telegram_chat_id: str | None = None
+
+
+class UserPasswordChange(BaseModel):
+    old_password: str
+    new_password: str = Field(min_length=6, max_length=128)
