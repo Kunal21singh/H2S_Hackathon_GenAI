@@ -24,20 +24,30 @@ import {
   Flame,
   GraduationCap,
   HardHat,
+  Headphones,
   HeartPulse,
+  HelpCircle,
   Leaf,
+  Lock,
   LogOut,
+  Mail,
   MapPin,
   MessageSquare,
   Mic,
+  Phone,
+  PhoneCall,
   RefreshCw,
   Scale,
+  Search,
   Send,
   Shield,
   ShieldCheck,
   Sprout,
   Sparkles,
+  Sun,
+  Moon,
   ThumbsUp,
+  User,
   Trees,
   Truck,
   Upload,
@@ -634,7 +644,7 @@ function AnalyticsDashboard({ user, complaints }) {
                           <span className="muted">{dept.active} Active / {dept.resolved} Resolved ({dept.total} Total)</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div className="progress-container" style={{ flex: 1, height: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', overflow: 'hidden' }}>
+                          <div className="progress-container" style={{ flex: 1, height: '12px', background: 'var(--border-color)', borderRadius: '6px', overflow: 'hidden' }}>
                             <div style={{
                               width: `${pct}%`,
                               height: '100%',
@@ -643,7 +653,7 @@ function AnalyticsDashboard({ user, complaints }) {
                               transition: 'width 0.5s ease'
                             }} />
                           </div>
-                          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '36px', textAlign: 'right' }}>{dept.rate}%</span>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '36px', textAlign: 'right', color: 'var(--color-main)' }}>{dept.rate}%</span>
                         </div>
                       </div>
                     );
@@ -666,7 +676,7 @@ function AnalyticsDashboard({ user, complaints }) {
                           <span className="muted">{st.active} Active / {st.resolved} Resolved</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div className="progress-container" style={{ flex: 1, height: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', overflow: 'hidden' }}>
+                          <div className="progress-container" style={{ flex: 1, height: '12px', background: 'var(--border-color)', borderRadius: '6px', overflow: 'hidden' }}>
                             <div style={{
                               width: `${pct}%`,
                               height: '100%',
@@ -675,7 +685,7 @@ function AnalyticsDashboard({ user, complaints }) {
                               transition: 'width 0.5s ease'
                             }} />
                           </div>
-                          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '36px', textAlign: 'right' }}>{st.rate}%</span>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '36px', textAlign: 'right', color: 'var(--color-main)' }}>{st.rate}%</span>
                         </div>
                       </div>
                     );
@@ -1806,7 +1816,908 @@ function AIChatAssistantWidget({ session, refresh }) {
   );
 }
 
+function FAQSection() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [expandedIndex, setExpandedIndex] = useState(null);
+
+  const faqs = [
+    {
+      category: 'Filing & Intake',
+      question: 'How does CivicPulse AI auto-classify and route my complaint?',
+      answer: 'CivicPulse uses advanced Multimodal AI and Gemini Language Models to analyze your grievance text, voice transcripts, and photo evidence. It automatically assigns the responsible government department (e.g. Water Works, Public Works, Power Grid), determines priority level (Critical, High, Medium, Low), and routes it directly to the designated official.'
+    },
+    {
+      category: 'Filing & Intake',
+      question: 'What happens when an AI Duplicate Grievance Alert pops up?',
+      answer: 'Our location-aware AI engine checks nearby active reports within your ward/neighborhood. If a similar issue was recently filed, an alert will display. You can click "👍 Upvote & Boost Priority" to join existing citizens in escalating the ticket, or click "Submit New Anyway" if your issue is distinct.'
+    },
+    {
+      category: 'Filing & Intake',
+      question: 'Can I dictate my complaint using Voice-to-Text?',
+      answer: 'Yes! When filing a complaint, click the Microphone 🎙️ button to speak your grievance in natural language. Our system transcribes your voice directly into the report.'
+    },
+    {
+      category: 'Tracking & Timeline',
+      question: 'What do the 4 stages on the Complaint Timeline mean?',
+      answer: 'Every complaint progresses through 4 clear lifecycle stages:\n1. Reported: Grievance logged by citizen.\n2. AI Routed: Machine learning assigns department & priority.\n3. In Progress: Field officer initiated resolution work.\n4. Resolved: Issue fixed with photo proof & timestamp uploaded by officer.'
+    },
+    {
+      category: 'Tracking & Timeline',
+      question: 'How is resolution verified by department officials?',
+      answer: 'Field officers must attach a geo-tagged resolution photo proof before marking a ticket as Resolved. Citizens and administrators can compare the original reported photo against the official resolution proof side-by-side on the dashboard.'
+    },
+    {
+      category: 'Notifications & Alerts',
+      question: 'How do I receive instant status updates on Telegram?',
+      answer: 'During registration or profile settings, add your Telegram Chat ID. CivicPulse will automatically send instant push notifications whenever your grievance status changes or an official posts a progress update.'
+    },
+    {
+      category: 'Department & Governance',
+      question: 'What is the Executive Monitor dashboard for Chief Ministers & PMs?',
+      answer: 'The Executive Monitor provides real-time state-level and national-level oversight, allowing CMs and national administrators to track department resolution rates, bottleneck areas, hotspot maps, and download Executive CSV Briefs.'
+    }
+  ];
+
+  const categories = ['All', 'Filing & Intake', 'Tracking & Timeline', 'Notifications & Alerts', 'Department & Governance'];
+
+  const filteredFaqs = faqs.filter(faq => {
+    const matchesCategory = activeCategory === 'All' || faq.category === activeCategory;
+    const matchesSearch = faq.question.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          faq.answer.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  return (
+    <section className="panel" style={{ padding: '28px', maxWidth: '1000px', margin: '0 auto 30px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+        <div style={{ padding: '10px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6' }}>
+          <HelpCircle size={28} />
+        </div>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--color-main)' }}>Frequently Asked Questions (FAQs)</h2>
+          <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--color-muted)' }}>
+            Find answers to common questions about filing grievances, AI routing, tracking progress, and resolution proof.
+          </p>
+        </div>
+      </div>
+
+      {/* Search & Filter Bar */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '20px', alignItems: 'center' }}>
+        <div style={{ flex: 1, minWidth: '260px', position: 'relative' }}>
+          <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-muted)' }} />
+          <input
+            type="text"
+            placeholder="Search FAQs by keywords..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ width: '100%', padding: '10px 14px 10px 36px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)', fontSize: '0.88rem' }}
+          />
+        </div>
+        
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {categories.map(cat => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setActiveCategory(cat)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '20px',
+                fontSize: '0.78rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                border: activeCategory === cat ? '1px solid #3b82f6' : '1px solid var(--border-color)',
+                background: activeCategory === cat ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.03)',
+                color: activeCategory === cat ? '#60a5fa' : 'var(--color-muted)'
+              }}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Accordion FAQ List */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {filteredFaqs.length === 0 ? (
+          <p style={{ padding: '30px', textAlign: 'center', color: 'var(--color-muted)' }}>No matching FAQs found for your search query.</p>
+        ) : (
+          filteredFaqs.map((faq, idx) => {
+            const isOpen = expandedIndex === idx;
+            return (
+              <div 
+                key={idx}
+                style={{
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '10px',
+                  background: isOpen ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.1)',
+                  overflow: 'hidden',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setExpandedIndex(isOpen ? null : idx)}
+                  style={{
+                    width: '100%',
+                    padding: '14px 18px',
+                    display: 'flex',
+                    justify: 'space-between',
+                    alignItems: 'center',
+                    background: 'none',
+                    border: 'none',
+                    textAlign: 'left',
+                    color: 'var(--color-main)',
+                    fontSize: '0.95rem',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', fontWeight: 'bold' }}>{faq.category}</span>
+                    {faq.question}
+                  </span>
+                  {isOpen ? <ChevronDown size={18} color="#60a5fa" /> : <ChevronRight size={18} color="var(--color-muted)" />}
+                </button>
+
+                {isOpen && (
+                  <div style={{ padding: '0 18px 16px', color: 'var(--color-muted)', fontSize: '0.88rem', lineHeight: '1.6', borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: '4px', paddingTop: '12px', whiteSpace: 'pre-line' }}>
+                    {faq.answer}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ContactUsSection({ user, session }) {
+  const [form, setForm] = useState({ name: user?.full_name || '', email: '', department: 'Public Works', subject: '', message: '' });
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setSubmitted(true);
+    setTimeout(() => {
+      setSubmitted(false);
+      setForm({ name: user?.full_name || '', email: '', department: 'Public Works', subject: '', message: '' });
+    }, 4000);
+  };
+
+  return (
+    <section className="panel" style={{ padding: '28px', maxWidth: '1100px', margin: '0 auto 30px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+        <div style={{ padding: '10px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
+          <PhoneCall size={28} />
+        </div>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--color-main)' }}>Contact Us & Nodal Helplines</h2>
+          <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--color-muted)' }}>
+            Get in touch with department nodal officers, emergency civic support, or send direct inquiries.
+          </p>
+        </div>
+      </div>
+
+      {/* Emergency Helpline Cards Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', marginBottom: '30px' }}>
+        <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444', fontWeight: 'bold', marginBottom: '6px' }}>
+            <Phone size={18} /> Emergency Civic Line
+          </div>
+          <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: 'var(--color-main)', fontFamily: 'monospace' }}>112 / 1800-11-2024</div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)', display: 'block', marginTop: '4px' }}>Toll-Free • Available 24x7</span>
+        </div>
+
+        <div style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '12px', padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#3b82f6', fontWeight: 'bold', marginBottom: '6px' }}>
+            <Building2 size={18} /> Central Grievance Cell
+          </div>
+          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--color-main)', fontFamily: 'monospace' }}>011-2309-8800</div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)', display: 'block', marginTop: '4px' }}>Cabinet Secretariat, North Block</span>
+        </div>
+
+        <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontWeight: 'bold', marginBottom: '6px' }}>
+            <Mail size={18} /> Support Email
+          </div>
+          <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: 'var(--color-main)' }}>support@civicpulse.gov.in</div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)', display: 'block', marginTop: '4px' }}>Response time: &lt; 24 hours</span>
+        </div>
+      </div>
+
+      {/* Main Grid: Contact Form & Department Directory */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px' }}>
+        {/* Direct Inquiry Form */}
+        <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '20px' }}>
+          <h3 style={{ margin: '0 0 16px', fontSize: '1.05rem', color: 'var(--color-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <MessageSquare size={18} color="#3b82f6" /> Send Direct Message to Nodal Officer
+          </h3>
+
+          {submitted ? (
+            <div style={{ padding: '20px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', borderRadius: '8px', color: '#34d399', textAlign: 'center', fontWeight: 'bold' }}>
+              ✓ Thank you! Your message has been routed to the Nodal Officer. Reference Ticket ID will be sent to your phone.
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+                  Your Name
+                  <input
+                    required
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
+                  />
+                </label>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+                  Email / Contact
+                  <input
+                    required
+                    type="text"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    placeholder="email or phone number"
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
+                  />
+                </label>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+                  Target Department
+                  <select
+                    value={form.department}
+                    onChange={(e) => setForm({ ...form, department: e.target.value })}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
+                  >
+                    <option value="Public Works">Public Works (Roads & Drainage)</option>
+                    <option value="Water Works">Water Works & Sanitation</option>
+                    <option value="Power Grid">Electricity & Power Grid</option>
+                    <option value="Waste Management">Waste & Sanitation</option>
+                    <option value="Health & Medical">Health & Medical Services</option>
+                  </select>
+                </label>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+                  Subject
+                  <input
+                    required
+                    type="text"
+                    value={form.subject}
+                    onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                    placeholder="e.g. Urgent pipeline repair"
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
+                  />
+                </label>
+              </div>
+
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+                Message / Inquiry Details
+                <textarea
+                  required
+                  rows={4}
+                  value={form.message}
+                  onChange={(e) => setForm({ ...form, message: e.target.value })}
+                  placeholder="Describe your inquiry or request for the nodal department..."
+                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
+                />
+              </label>
+
+              <button
+                type="submit"
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justify: 'center',
+                  gap: '8px',
+                  marginTop: '4px'
+                }}
+              >
+                <Send size={16} /> Send Inquiry
+              </button>
+            </form>
+          )}
+        </div>
+
+        {/* Key Department Directory & Office Info */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '18px' }}>
+            <h4 style={{ margin: '0 0 10px', fontSize: '0.9rem', color: 'var(--color-main)', textTransform: 'uppercase' }}>Department Toll-Free Lines</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.82rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <span style={{ color: 'var(--color-muted)' }}>💧 Water Supply & Leakage</span>
+                <strong style={{ color: '#60a5fa', fontFamily: 'monospace' }}>1800-425-0011</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <span style={{ color: 'var(--color-muted)' }}>🚧 Roads & Potholes (PWD)</span>
+                <strong style={{ color: '#60a5fa', fontFamily: 'monospace' }}>1800-180-2222</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <span style={{ color: 'var(--color-muted)' }}>⚡ Electricity & Power Outages</span>
+                <strong style={{ color: '#60a5fa', fontFamily: 'monospace' }}>1912</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-muted)' }}>🧹 Sanitation & Solid Waste</span>
+                <strong style={{ color: '#60a5fa', fontFamily: 'monospace' }}>1800-11-0033</strong>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '18px' }}>
+            <h4 style={{ margin: '0 0 8px', fontSize: '0.9rem', color: 'var(--color-main)', textTransform: 'uppercase' }}>Headquarters Address</h4>
+            <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-muted)', lineHeight: '1.5' }}>
+              <strong>CivicPulse National Grievance Monitoring Hub</strong><br />
+              Department of Administrative Reforms & Public Grievances (DARPG)<br />
+              Sardar Patel Bhawan, Parliament Street, New Delhi - 110001
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function UserProfileSection({ session, setSession, complaints }) {
+  const user = session.user;
+  const [profileForm, setProfileForm] = useState({
+    full_name: user.full_name || '',
+    phone: user.phone || '',
+    state: user.state || '',
+    telegram_chat_id: user.telegram_chat_id || ''
+  });
+  const [passForm, setPassForm] = useState({
+    old_password: '',
+    new_password: '',
+    confirm_password: ''
+  });
+  
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [passLoading, setPassLoading] = useState(false);
+  const [notice, setNotice] = useState(null);
+
+  const userComplaints = complaints.filter(c => c.reporter_username === user.username);
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    setProfileLoading(true);
+    setNotice(null);
+    try {
+      const res = await fetch(`${API_BASE}/auth/profile`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders(session.token)
+        },
+        body: JSON.stringify(profileForm)
+      });
+      if (!res.ok) {
+        const detail = await readError(res);
+        throw new Error(detail || 'Could not update profile.');
+      }
+      const updatedUser = await res.json();
+      const newSession = { ...session, user: updatedUser };
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newSession));
+      setSession(newSession);
+      setNotice({ type: 'success', text: '✓ Profile details updated successfully!' });
+    } catch (err) {
+      setNotice({ type: 'error', text: err.message || 'Error updating profile.' });
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (passForm.new_password !== passForm.confirm_password) {
+      setNotice({ type: 'error', text: 'New password and confirm password do not match.' });
+      return;
+    }
+    setPassLoading(true);
+    setNotice(null);
+    try {
+      const res = await fetch(`${API_BASE}/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders(session.token)
+        },
+        body: JSON.stringify({
+          old_password: passForm.old_password,
+          new_password: passForm.new_password
+        })
+      });
+      if (!res.ok) {
+        const detail = await readError(res);
+        throw new Error(detail || 'Could not change password.');
+      }
+      setPassForm({ old_password: '', new_password: '', confirm_password: '' });
+      setNotice({ type: 'success', text: '🔒 Password changed successfully!' });
+    } catch (err) {
+      setNotice({ type: 'error', text: err.message || 'Error changing password.' });
+    } finally {
+      setPassLoading(false);
+    }
+  };
+
+  return (
+    <section className="panel" style={{ padding: '28px', maxWidth: '1000px', margin: '0 auto 30px' }}>
+      {/* Header Banner */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '20px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.6rem', fontWeight: 'bold', color: '#ffffff', boxShadow: '0 8px 20px rgba(59, 130, 246, 0.3)' }}>
+            {user.username[0].toUpperCase()}
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--color-main)' }}>{user.full_name || user.username}</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px', fontSize: '0.85rem', color: 'var(--color-muted)' }}>
+              <span>@{user.username}</span>
+              <span>•</span>
+              <span className="pill" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)', fontWeight: 'bold', fontSize: '0.72rem' }}>
+                {user.user_type}
+              </span>
+              {user.state && (
+                <>
+                  <span>•</span>
+                  <span>📍 {user.state}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Account Stats */}
+        <div style={{ display: 'flex', gap: '16px' }}>
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '10px 16px', borderRadius: '10px', textAlign: 'center' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--color-muted)', display: 'block', textTransform: 'uppercase' }}>Filed Reports</span>
+            <strong style={{ fontSize: '1.2rem', color: 'var(--color-main)' }}>{userComplaints.length}</strong>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '10px 16px', borderRadius: '10px', textAlign: 'center' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--color-muted)', display: 'block', textTransform: 'uppercase' }}>Account ID</span>
+            <strong style={{ fontSize: '0.82rem', color: '#60a5fa', fontFamily: 'monospace' }}>{user.id}</strong>
+          </div>
+        </div>
+      </div>
+
+      {notice && <div className={`notice ${notice.type}`} style={{ marginBottom: '20px' }}>{notice.text}</div>}
+
+      {/* Grid: Profile Form & Password Form */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px' }}>
+        {/* Profile Information Form */}
+        <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '20px' }}>
+          <h3 style={{ margin: '0 0 16px', fontSize: '1.05rem', color: 'var(--color-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ShieldCheck size={18} color="#3b82f6" /> Personal Profile Details
+          </h3>
+
+          <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+              Full Name
+              <input
+                required
+                type="text"
+                value={profileForm.full_name}
+                onChange={(e) => setProfileForm({ ...profileForm, full_name: e.target.value })}
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
+              />
+            </label>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+                Phone Number
+                <input
+                  required
+                  type="text"
+                  value={profileForm.phone}
+                  onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
+                />
+              </label>
+
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+                State / Region
+                <input
+                  type="text"
+                  placeholder="e.g. West Bengal"
+                  value={profileForm.state}
+                  onChange={(e) => setProfileForm({ ...profileForm, state: e.target.value })}
+                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
+                />
+              </label>
+            </div>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+              Telegram Chat ID (for Push Notifications)
+              <input
+                type="text"
+                placeholder="Optional: Enter Telegram Chat ID"
+                value={profileForm.telegram_chat_id}
+                onChange={(e) => setProfileForm({ ...profileForm, telegram_chat_id: e.target.value })}
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={profileLoading}
+              style={{
+                padding: '10px 16px',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                color: '#ffffff',
+                border: 'none',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justify: 'center',
+                gap: '8px',
+                marginTop: '6px'
+              }}
+            >
+              {profileLoading ? <RefreshCw className="spin" size={16} /> : <CheckCircle2 size={16} />}
+              {profileLoading ? 'Saving...' : 'Save Profile Changes'}
+            </button>
+          </form>
+        </div>
+
+        {/* Change Password Form */}
+        <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '20px' }}>
+          <h3 style={{ margin: '0 0 16px', fontSize: '1.05rem', color: 'var(--color-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Lock size={18} color="#f59e0b" /> Change Password
+          </h3>
+
+          <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+              Current Password
+              <input
+                required
+                type="password"
+                placeholder="••••••••"
+                value={passForm.old_password}
+                onChange={(e) => setPassForm({ ...passForm, old_password: e.target.value })}
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
+              />
+            </label>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+              New Password
+              <input
+                required
+                type="password"
+                placeholder="At least 6 characters"
+                value={passForm.new_password}
+                onChange={(e) => setPassForm({ ...passForm, new_password: e.target.value })}
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
+              />
+            </label>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+              Confirm New Password
+              <input
+                required
+                type="password"
+                placeholder="Re-enter new password"
+                value={passForm.confirm_password}
+                onChange={(e) => setPassForm({ ...passForm, confirm_password: e.target.value })}
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--color-main)' }}
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={passLoading}
+              style={{
+                padding: '10px 16px',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                color: '#ffffff',
+                border: 'none',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justify: 'center',
+                gap: '8px',
+                marginTop: '6px'
+              }}
+            >
+              {passLoading ? <RefreshCw className="spin" size={16} /> : <Lock size={16} />}
+              {passLoading ? 'Updating Password...' : 'Update Password'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function downloadCSV(filename, headers, rows) {
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(r => r.map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','))
+  ].join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function ReportsAndChartsSection({ user, complaints }) {
+  const exportFullGrievancesCSV = () => {
+    const headers = ['ID', 'Date', 'Summary', 'Category', 'Department', 'Priority', 'Status', 'Place', 'State', 'Upvotes', 'Reporter'];
+    const rows = complaints.map(c => [
+      c.id,
+      new Date(c.created_at).toLocaleString(),
+      c.classification?.summary || c.text,
+      c.classification?.category || 'other',
+      c.classification?.department || 'Unassigned',
+      c.classification?.priority || 'medium',
+      c.status,
+      c.place || '',
+      c.state || '',
+      c.upvotes || 0,
+      c.reporter_username || 'citizen'
+    ]);
+    downloadCSV(`civicpulse_full_grievances_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  };
+
+  const exportDepartmentReportCSV = () => {
+    const deptStats = {};
+    complaints.forEach(c => {
+      const dept = c.classification?.department || 'Unassigned';
+      if (!deptStats[dept]) deptStats[dept] = { total: 0, resolved: 0, active: 0, critical: 0 };
+      deptStats[dept].total += 1;
+      if (c.status === 'resolved') deptStats[dept].resolved += 1;
+      else deptStats[dept].active += 1;
+      if (c.classification?.priority === 'critical' || c.classification?.priority === 'high') deptStats[dept].critical += 1;
+    });
+
+    const headers = ['Department Name', 'Total Complaints', 'Active Cases', 'Resolved Cases', 'High/Critical Priority', 'Resolution Rate (%)'];
+    const rows = Object.entries(deptStats).map(([dept, stats]) => [
+      dept,
+      stats.total,
+      stats.active,
+      stats.resolved,
+      stats.critical,
+      stats.total > 0 ? ((stats.resolved / stats.total) * 100).toFixed(1) : '0'
+    ]);
+    downloadCSV(`civicpulse_department_audit_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  };
+
+  const exportExecutiveBriefCSV = () => {
+    const total = complaints.length;
+    const resolved = complaints.filter(c => c.status === 'resolved').length;
+    const active = total - resolved;
+    const critical = complaints.filter(c => c.classification?.priority === 'critical').length;
+    const high = complaints.filter(c => c.classification?.priority === 'high').length;
+
+    const headers = ['Metric Label', 'Value', 'Notes'];
+    const rows = [
+      ['Total Grievances Logged', total, 'National Database'],
+      ['Active Redressal Tickets', active, 'Currently In Progress or AI Routed'],
+      ['Resolved Cases', resolved, 'Verified with Resolution Photo Proof'],
+      ['Resolution Rate', total > 0 ? `${((resolved / total) * 100).toFixed(1)}%` : '0%', 'Overall system efficiency'],
+      ['Critical Priority Tickets', critical, 'Immediate SLA Attention Required'],
+      ['High Priority Tickets', high, 'Priority Queue Escalation']
+    ];
+    downloadCSV(`civicpulse_executive_brief_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  };
+
+  // Priority Distribution Stats
+  const priorityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
+  const categoryCounts = {};
+
+  complaints.forEach(c => {
+    const prio = (c.classification?.priority || 'medium').toLowerCase();
+    if (priorityCounts[prio] !== undefined) priorityCounts[prio] += 1;
+    
+    const cat = c.classification?.category || 'other';
+    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+  });
+
+  const totalComplaints = complaints.length || 1;
+
+  return (
+    <section style={{ maxWidth: '1100px', margin: '0 auto 30px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Section Header */}
+      <div className="panel" style={{ padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6' }}>
+            <BarChart3 size={30} />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--color-main)' }}>Reports & Visual Analytics</h2>
+            <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--color-muted)' }}>
+              Explore public grievance diagnostic intelligence, regional SLA charts, and download executive CSV briefs.
+            </p>
+          </div>
+        </div>
+
+        {/* CSV Export Quick Buttons */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={exportFullGrievancesCSV}
+            style={{
+              padding: '8px 14px',
+              borderRadius: '8px',
+              border: '1px solid rgba(59, 130, 246, 0.4)',
+              background: 'rgba(59, 130, 246, 0.15)',
+              color: '#60a5fa',
+              fontSize: '0.8rem',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <Download size={14} /> Full Grievances CSV
+          </button>
+          <button
+            type="button"
+            onClick={exportDepartmentReportCSV}
+            style={{
+              padding: '8px 14px',
+              borderRadius: '8px',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
+              background: 'rgba(16, 185, 129, 0.15)',
+              color: '#34d399',
+              fontSize: '0.8rem',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <Download size={14} /> Department SLA CSV
+          </button>
+          <button
+            type="button"
+            onClick={exportExecutiveBriefCSV}
+            style={{
+              padding: '8px 14px',
+              borderRadius: '8px',
+              border: '1px solid rgba(245, 158, 11, 0.4)',
+              background: 'rgba(245, 158, 11, 0.15)',
+              color: '#fbbf24',
+              fontSize: '0.8rem',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <Download size={14} /> Executive Brief CSV
+          </button>
+        </div>
+      </div>
+
+      {/* Moved Public Grievance Diagnostic Center Component */}
+      <AnalyticsDashboard user={user} complaints={complaints} />
+
+      {/* Priority & Category Visual Distribution Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        {/* Priority Distribution Spectrum */}
+        <div className="panel" style={{ padding: '20px' }}>
+          <h3 style={{ margin: '0 0 16px', fontSize: '1.05rem', color: 'var(--color-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertTriangle size={18} color="#ef4444" /> Priority Level Distribution Spectrum
+          </h3>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {/* Critical */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '4px' }}>
+                <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Critical Priority</span>
+                <span style={{ color: 'var(--color-main)', fontWeight: 'bold' }}>{priorityCounts.critical} cases ({((priorityCounts.critical / totalComplaints) * 100).toFixed(0)}%)</span>
+              </div>
+              <div style={{ height: '10px', background: 'var(--border-color)', borderRadius: '5px', overflow: 'hidden' }}>
+                <div style={{ width: `${(priorityCounts.critical / totalComplaints) * 100}%`, height: '100%', background: '#ef4444', borderRadius: '5px' }} />
+              </div>
+            </div>
+
+            {/* High */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '4px' }}>
+                <span style={{ color: '#f97316', fontWeight: 'bold' }}>High Priority</span>
+                <span style={{ color: 'var(--color-main)', fontWeight: 'bold' }}>{priorityCounts.high} cases ({((priorityCounts.high / totalComplaints) * 100).toFixed(0)}%)</span>
+              </div>
+              <div style={{ height: '10px', background: 'var(--border-color)', borderRadius: '5px', overflow: 'hidden' }}>
+                <div style={{ width: `${(priorityCounts.high / totalComplaints) * 100}%`, height: '100%', background: '#f97316', borderRadius: '5px' }} />
+              </div>
+            </div>
+
+            {/* Medium */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '4px' }}>
+                <span style={{ color: '#eab308', fontWeight: 'bold' }}>Medium Priority</span>
+                <span style={{ color: 'var(--color-main)', fontWeight: 'bold' }}>{priorityCounts.medium} cases ({((priorityCounts.medium / totalComplaints) * 100).toFixed(0)}%)</span>
+              </div>
+              <div style={{ height: '10px', background: 'var(--border-color)', borderRadius: '5px', overflow: 'hidden' }}>
+                <div style={{ width: `${(priorityCounts.medium / totalComplaints) * 100}%`, height: '100%', background: '#eab308', borderRadius: '5px' }} />
+              </div>
+            </div>
+
+            {/* Low */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '4px' }}>
+                <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>Low Priority</span>
+                <span style={{ color: 'var(--color-main)', fontWeight: 'bold' }}>{priorityCounts.low} cases ({((priorityCounts.low / totalComplaints) * 100).toFixed(0)}%)</span>
+              </div>
+              <div style={{ height: '10px', background: 'var(--border-color)', borderRadius: '5px', overflow: 'hidden' }}>
+                <div style={{ width: `${(priorityCounts.low / totalComplaints) * 100}%`, height: '100%', background: '#3b82f6', borderRadius: '5px' }} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Category Breakdown Chart */}
+        <div className="panel" style={{ padding: '20px' }}>
+          <h3 style={{ margin: '0 0 16px', fontSize: '1.05rem', color: 'var(--color-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FileText size={18} color="#10b981" /> Grievances by Issue Category
+          </h3>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {Object.entries(categoryCounts).length === 0 ? (
+              <p style={{ color: 'var(--color-muted)', fontSize: '0.85rem' }}>No category data available.</p>
+            ) : (
+              Object.entries(categoryCounts).map(([cat, count]) => {
+                const pct = ((count / totalComplaints) * 100).toFixed(0);
+                return (
+                  <div key={cat} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                      <span style={{ textTransform: 'capitalize', fontWeight: '600', color: 'var(--color-main)' }}>{cat.replace('_', ' ')}</span>
+                      <span style={{ color: 'var(--color-muted)', fontWeight: 'bold' }}>{count} ({pct}%)</span>
+                    </div>
+                    <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)', borderRadius: '4px' }} />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function App() {
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('civicpulse_theme') || 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('civicpulse_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [session, setSession] = useState(() => {
     const saved = localStorage.getItem(AUTH_STORAGE_KEY);
     return saved ? JSON.parse(saved) : null;
@@ -2439,12 +3350,117 @@ function App() {
   return (
     <main className="shell">
       <header className="topbar">
-        <div>
-          <p className="eyebrow">AI grievance redressal</p>
-          <h1>CivicPulse</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <div>
+            <p className="eyebrow">AI grievance redressal</p>
+            <h1>CivicPulse</h1>
+          </div>
+
+          <div className="navTabs" style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.25)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+            <button
+              type="button"
+              onClick={() => setActiveTab('dashboard')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                background: activeTab === 'dashboard' ? 'var(--color-primary, #3b82f6)' : 'transparent',
+                color: activeTab === 'dashboard' ? '#ffffff' : 'var(--color-muted)',
+                fontWeight: 'bold',
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <Activity size={15} /> Dashboard
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('reports')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                background: activeTab === 'reports' ? 'var(--color-primary, #3b82f6)' : 'transparent',
+                color: activeTab === 'reports' ? '#ffffff' : 'var(--color-muted)',
+                fontWeight: 'bold',
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <BarChart3 size={15} /> Reports & Charts
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('faqs')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                background: activeTab === 'faqs' ? 'var(--color-primary, #3b82f6)' : 'transparent',
+                color: activeTab === 'faqs' ? '#ffffff' : 'var(--color-muted)',
+                fontWeight: 'bold',
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <HelpCircle size={15} /> FAQs
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('contact')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                background: activeTab === 'contact' ? 'var(--color-primary, #3b82f6)' : 'transparent',
+                color: activeTab === 'contact' ? '#ffffff' : 'var(--color-muted)',
+                fontWeight: 'bold',
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <PhoneCall size={15} /> Contact Us
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('profile')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                background: activeTab === 'profile' ? 'var(--color-primary, #3b82f6)' : 'transparent',
+                color: activeTab === 'profile' ? '#ffffff' : 'var(--color-muted)',
+                fontWeight: 'bold',
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <User size={15} /> Profile
+            </button>
+          </div>
         </div>
         <div className="topActions">
-          <div className="accountBadge">
+          <div className="accountBadge" onClick={() => setActiveTab('profile')} style={{ cursor: 'pointer' }} title="View Profile">
             <ShieldCheck size={17} />
             <span>{session.user.username}</span>
           </div>
@@ -2499,6 +3515,10 @@ function App() {
             )}
           </div>
 
+          <button className="iconButton" onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}>
+            {theme === 'dark' ? <Sun size={18} color="#f59e0b" /> : <Moon size={18} color="#6366f1" />}
+          </button>
+
           <button className="iconButton" onClick={refresh} title="Refresh dashboard">
             <RefreshCw size={18} />
           </button>
@@ -2516,7 +3536,13 @@ function App() {
       </section>
       {notice && <div className={`notice ${notice.type}`}>{notice.text}</div>}
 
-      <AnalyticsDashboard user={session.user} complaints={complaints} />
+      {activeTab === 'reports' && <ReportsAndChartsSection user={session.user} complaints={complaints} />}
+      {activeTab === 'faqs' && <FAQSection />}
+      {activeTab === 'contact' && <ContactUsSection user={session.user} session={session} />}
+      {activeTab === 'profile' && <UserProfileSection session={session} setSession={setSession} complaints={complaints} />}
+
+      {activeTab === 'dashboard' && (
+        <>
 
       <section className="workspace">
         {session.user.user_type === 'Admin' ? (
@@ -3078,6 +4104,8 @@ function App() {
           )}
         </section>
       </div>
+      )}
+      </>
       )}
 
 
