@@ -303,7 +303,7 @@ function App() {
   };
 
   const metrics = useMemo(() => {
-    const active = complaints.filter((item) => !item.duplicate_of);
+    const active = complaints.filter((item) => item.status !== 'resolved');
     const critical = active.filter((item) => ['high', 'critical'].includes(item.classification.priority)).length;
     const resolved = complaints.filter((item) => item.status === 'resolved').length;
     return { total: complaints.length, active: active.length, critical, resolved };
@@ -910,12 +910,16 @@ function App() {
 
       {activeTab === 'dashboard' && (
         <>
-          <section className="workspace">
-            {session.user.user_type === 'Admin' ? (
+          {session.user.user_type === 'Admin' ? (
+            <section className="workspace" style={{ gridTemplateColumns: '1fr', gap: '24px' }}>
               <AdminPanel token={session.token} user={session.user} complaints={complaints} refresh={refresh} />
-            ) : ['Chief Minister', 'Prime Minister'].includes(session.user.user_type) ? (
+            </section>
+          ) : ['Chief Minister', 'Prime Minister'].includes(session.user.user_type) ? (
+            <section className="workspace" style={{ gridTemplateColumns: '1fr', gap: '24px' }}>
               <ExecutiveMonitor user={session.user} complaints={complaints} />
-            ) : (
+            </section>
+          ) : (
+            <section className="workspace">
               <form className="panel intake" onSubmit={submitComplaint}>
                 <div className="panelTitle">
                   <Send size={18} />
@@ -1053,16 +1057,16 @@ function App() {
                   Submit and classify
                 </button>
               </form>
-            )}
 
-            <section className="panel">
-              <div className="panelTitle" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <MapPin size={18} />
-                <h2>Hotspots Map</h2>
-              </div>
-              <HotspotMap hotspots={hotspots} />
+              <section className="panel">
+                <div className="panelTitle" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <MapPin size={18} />
+                  <h2>Hotspots Map</h2>
+                </div>
+                <HotspotMap hotspots={hotspots} />
+              </section>
             </section>
-          </section>
+          )}
 
           {session.user.user_type !== 'Admin' && (
             <div className="queues-container">

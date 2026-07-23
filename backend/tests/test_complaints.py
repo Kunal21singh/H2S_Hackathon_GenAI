@@ -90,6 +90,22 @@ def test_complaint_lifecycle(client):
     assert complete_res.json()["status"] == "resolved"
     assert complete_res.json()["resolution_photo_filename"] is not None
 
+    # 6.5 Modify complaint (Admin)
+    modify_res = client.patch(
+        f"/complaints/{comp_id}",
+        json={
+            "text": "Water pipe is leaking near the bus stop and flooding the lane.",
+            "place": "Belgharia",
+            "state": "West Bengal",
+            "department": "Water Works",
+            "priority": "medium",
+            "status": "routed",
+            "category": "water_leak"
+        },
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert modify_res.status_code == 200
+
     # 7. Delete complaint (Admin)
     delete_res = client.delete(
         f"/complaints/{comp_id}",
