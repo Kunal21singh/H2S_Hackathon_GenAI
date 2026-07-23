@@ -168,7 +168,7 @@ async def _try_bigquery_answer(settings: Settings, question: str) -> AnalyticsAn
         prompt = f"""
 You convert civic analytics questions into BigQuery Standard SQL.
 Use only this table: {table}.
-Columns: id, text, ward, state, lat, lng, status, category, department, priority, duplicate_of, created_at.
+Columns: id, text, ward, place, state, lat, lng, status, category, department, priority, duplicate_of, created_at.
 Return only SQL. Question: {question}
 """
         sql = None

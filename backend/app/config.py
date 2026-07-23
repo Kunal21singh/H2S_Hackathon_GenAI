@@ -1,6 +1,10 @@
 from __future__ import annotations
 from functools import lru_cache
+import os
+import secrets
+from pathlib import Path
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +27,33 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    @model_validator(mode="after")
+    def generate_or_load_secret(self) -> Settings:
+        # Avoid generating persistent secret files during test suite execution
+        if self.app_env == "test":
+            self.auth_secret = "test-suite-secret-key-12345"
+            return self
+
+        if self.auth_secret == "change-this-before-demo":
+            secret_file = Path("./data/.jwt_secret")
+            if secret_file.exists():
+                try:
+                    self.auth_secret = secret_file.read_text(encoding="utf-8").strip()
+                except Exception:
+                    pass
+            
+            # If not loaded or empty, generate a new one
+            if self.auth_secret == "change-this-before-demo" or not self.auth_secret:
+                new_secret = secrets.token_hex(32)
+                try:
+                    secret_file.parent.mkdir(parents=True, exist_ok=True)
+                    secret_file.write_text(new_secret, encoding="utf-8")
+                    self.auth_secret = new_secret
+                except Exception:
+                    # Fallback to random in-memory secret if writing fails
+                    self.auth_secret = new_secret
+        return self
 
     @property
     def cors_origins(self) -> list[str]:
