@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS `PROJECT_ID.civicpulse.complaints` (
   id STRING NOT NULL,
   text STRING,
   ward STRING,
+  place STRING,
+  state STRING,
   lat FLOAT64,
   lng FLOAT64,
   status STRING,
