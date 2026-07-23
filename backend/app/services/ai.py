@@ -57,6 +57,7 @@ def _local_classify(text: str, voice_transcript: str | None, photo_filename: str
                 summary=_summary(text, voice_transcript),
                 tags=[keyword for keyword in keywords if keyword in haystack][:4],
                 confidence=0.76,
+                translated_text=text,
             )
     return Classification(
         category=ComplaintCategory.other,
@@ -65,6 +66,7 @@ def _local_classify(text: str, voice_transcript: str | None, photo_filename: str
         summary=_summary(text, voice_transcript),
         tags=[],
         confidence=0.45,
+        translated_text=text,
     )
 
 
@@ -104,7 +106,9 @@ async def classify_complaint(
 ) -> Classification:
     dept_options = ", ".join(DEPARTMENTS)
     prompt = (
-        "Classify this civic grievance. Return only JSON with keys category, department, priority, summary, tags, confidence. "
+        "Classify this civic grievance. If the grievance is written or spoken in a regional language (like Hindi, Bengali, Tamil, etc.), "
+        "automatically translate it to English. Return only JSON with keys category, department, priority, summary, tags, confidence, translated_text. "
+        "translated_text should be the translated English text, or the original English text if no translation was needed. "
         "Allowed categories: pothole, garbage, water_leak, streetlight, drainage, traffic_signal, other. "
         "Allowed priorities: low, medium, high, critical. "
         f"Allowed departments (you MUST choose exactly one from this list): {dept_options}"
@@ -143,6 +147,7 @@ async def classify_complaint(
                 summary=data.get("summary") or _summary(text, voice_transcript),
                 tags=data.get("tags") or [],
                 confidence=float(data.get("confidence", 0.7)),
+                translated_text=data.get("translated_text") or text,
             )
         except Exception as e:
             print(f"Vertex AI classification failed, checking AI Studio: {e}")
@@ -181,6 +186,7 @@ async def classify_complaint(
                 summary=data.get("summary") or _summary(text, voice_transcript),
                 tags=data.get("tags") or [],
                 confidence=float(data.get("confidence", 0.7)),
+                translated_text=data.get("translated_text") or text,
             )
         except Exception as e:
             print(f"AI Studio classification failed: {e}")

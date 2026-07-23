@@ -53,6 +53,39 @@ import { getShortDeptName, getDeptIcon, getDeptHealthGrade } from './utils/depar
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 const AUTH_STORAGE_KEY = 'civicpulse-session';
 
+function getSLAStatus(complaint) {
+  if (!complaint.created_at) {
+    return { hoursElapsed: 0, limitHours: 168, isBreached: false, isWarning: false, timeText: '0h' };
+  }
+  const createdTime = new Date(complaint.created_at);
+  const endTime = complaint.completed_at ? new Date(complaint.completed_at) : new Date();
+  const hoursElapsed = (endTime - createdTime) / (1000 * 60 * 60);
+  
+  let limitHours = 168; // default 7 days for medium/low
+  const priority = (complaint.classification?.priority || 'low').toLowerCase();
+  
+  if (priority === 'critical') {
+    limitHours = 48; // 48 hours
+  } else if (priority === 'high') {
+    limitHours = 72; // 72 hours
+  }
+  
+  const isBreached = hoursElapsed > limitHours;
+  const isWarning = !isBreached && hoursElapsed > (limitHours * 0.8);
+  
+  const timeText = hoursElapsed > 24 
+    ? `${Math.floor(hoursElapsed / 24)}d ${Math.floor(hoursElapsed % 24)}h`
+    : `${Math.floor(hoursElapsed)}h`;
+    
+  return {
+    hoursElapsed,
+    limitHours,
+    isBreached,
+    isWarning,
+    timeText,
+  };
+}
+
 function App() {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('civicpulse_theme') || 'dark';
@@ -1091,6 +1124,28 @@ function App() {
                                 <span>{complaint.upvotes || 0} {complaint.upvotes === 1 ? 'Vote' : 'Votes'}</span>
                               </button>
                               <span className={`pill ${complaint.classification.priority}`}>{complaint.classification.priority}</span>
+                              {(() => {
+                                const sla = getSLAStatus(complaint);
+                                if (sla.isBreached) {
+                                  return (
+                                    <span className="pill" style={{ background: 'rgba(239, 68, 68, 0.18)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.4)', display: 'flex', alignItems: 'center', gap: '3px' }} title={`Breached SLA limit of ${sla.limitHours}h`}>
+                                      🚨 SLA Breached ({sla.timeText})
+                                    </span>
+                                  );
+                                } else if (sla.isWarning) {
+                                  return (
+                                    <span className="pill" style={{ background: 'rgba(245, 158, 11, 0.18)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.4)', display: 'flex', alignItems: 'center', gap: '3px' }} title={`Approaching SLA limit of ${sla.limitHours}h`}>
+                                      ⚠️ SLA Warning ({sla.timeText})
+                                    </span>
+                                  );
+                                } else {
+                                  return (
+                                    <span className="pill" style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--color-muted)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                      ⏱️ SLA OK ({sla.timeText})
+                                    </span>
+                                  );
+                                }
+                              })()}
                               <span className={`pill status-pill ${complaint.status}`}>{complaint.duplicate_of ? `Duplicate of ${complaint.duplicate_of}` : complaint.status}</span>
                             </div>
                           </article>
@@ -1110,6 +1165,13 @@ function App() {
                                 <div>
                                   <h4 style={{ margin: '0 0 6px', fontSize: '0.85rem', textTransform: 'uppercase' }}>Full Grievance Text</h4>
                                   <p style={{ margin: 0, fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}>{complaint.text}</p>
+                                  
+                                  {complaint.original_text && complaint.original_text !== complaint.text && (
+                                    <div style={{ marginTop: '10px', padding: '8px 12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '6px', borderLeft: '3px solid #6366f1' }}>
+                                      <h5 style={{ margin: '0 0 4px', fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-muted)' }}>Original Regional Input</h5>
+                                      <p style={{ margin: 0, fontSize: '0.9rem', fontStyle: 'italic' }}>{complaint.original_text}</p>
+                                    </div>
+                                  )}
                                   
                                   {complaint.voice_transcript && (
                                     <div className="voice-transcript-box" style={{ marginTop: '12px' }}>
@@ -1380,8 +1442,20 @@ function App() {
                                 {complaint.place}{complaint.state ? `, ${complaint.state}` : ''} / {complaint.classification.department} / {complaint.reporter_username || 'citizen'}
                               </span>
                             </div>
-                            <div className="rowBadges">
+                            <div className="rowBadges" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <span className={`pill ${complaint.classification.priority}`}>{complaint.classification.priority}</span>
+                              {(() => {
+                                const sla = getSLAStatus(complaint);
+                                return sla.isBreached ? (
+                                  <span className="pill" style={{ background: 'rgba(239, 68, 68, 0.18)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
+                                    🚨 Resolved Late ({sla.timeText})
+                                  </span>
+                                ) : (
+                                  <span className="pill" style={{ background: 'rgba(16, 185, 129, 0.18)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
+                                    ✅ SLA Met ({sla.timeText})
+                                  </span>
+                                );
+                              })()}
                               <span className="pill status-pill resolved">Resolved</span>
                             </div>
                           </article>
@@ -1401,6 +1475,13 @@ function App() {
                                 <div>
                                   <h4 style={{ margin: '0 0 6px', fontSize: '0.85rem', textTransform: 'uppercase' }}>Full Grievance Text</h4>
                                   <p style={{ margin: 0, fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}>{complaint.text}</p>
+                                  
+                                  {complaint.original_text && complaint.original_text !== complaint.text && (
+                                    <div style={{ marginTop: '10px', padding: '8px 12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '6px', borderLeft: '3px solid #6366f1' }}>
+                                      <h5 style={{ margin: '0 0 4px', fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-muted)' }}>Original Regional Input</h5>
+                                      <p style={{ margin: 0, fontSize: '0.9rem', fontStyle: 'italic' }}>{complaint.original_text}</p>
+                                    </div>
+                                  )}
                                   
                                   {complaint.voice_transcript && (
                                     <div className="voice-transcript-box" style={{ marginTop: '12px' }}>

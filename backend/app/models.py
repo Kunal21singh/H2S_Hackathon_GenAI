@@ -31,6 +31,7 @@ class Classification(BaseModel):
     summary: str
     tags: list[str] = []
     confidence: float = Field(ge=0, le=1)
+    translated_text: str | None = None
 
 
 class TimelineEvent(BaseModel):
@@ -43,6 +44,7 @@ class TimelineEvent(BaseModel):
 class Complaint(BaseModel):
     id: str = Field(default_factory=lambda: f"cmp_{uuid4().hex[:10]}")
     text: str
+    original_text: str | None = None
     timeline: list[TimelineEvent] = Field(default_factory=list)
     voice_transcript: str | None = None
     photo_filename: str | None = None
@@ -90,6 +92,7 @@ class Complaint(BaseModel):
 
 class ComplaintCreate(BaseModel):
     text: str
+    original_text: str | None = None
     voice_transcript: str | None = None
     place: str = "Unassigned"
     ward: str | None = None

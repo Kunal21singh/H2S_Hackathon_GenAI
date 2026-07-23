@@ -137,7 +137,8 @@ async def create_complaint(
         photo_filename=photo_filename,
     )
     complaint = Complaint(
-        text=text,
+        text=classification.translated_text or text,
+        original_text=text,
         voice_transcript=voice_transcript,
         photo_filename=photo_filename,
         photo_content_type=photo_content_type,
