@@ -1,3 +1,4 @@
+from __future__ import annotations
 from functools import lru_cache
 from fastapi import Depends, Header, HTTPException
 from app.config import Settings, get_settings

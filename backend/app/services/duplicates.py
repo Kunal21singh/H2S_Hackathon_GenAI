@@ -1,3 +1,4 @@
+from __future__ import annotations
 from math import asin, cos, radians, sin, sqrt
 
 from app.models import Complaint

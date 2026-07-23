@@ -1,4 +1,4 @@
-from app.models import Complaint, ComplaintClassification, ComplaintStatus, Category, Priority
+from app.models import Complaint, Classification, ComplaintStatus, ComplaintCategory
 from app.services.duplicates import find_duplicates, find_duplicates_with_scores, _distance_meters, _jaccard
 
 def test_jaccard_similarity():
@@ -16,14 +16,14 @@ def test_distance_meters():
 
 def test_find_duplicates_no_gps():
     c1 = Complaint(
-        text="A large pothole has formed on Sector 5 main road, blocking traffic.",
+        text="pothole main road sector 5 blocking traffic",
         place="Sector 5",
-        classification=ComplaintClassification(category=Category.roads, priority=Priority.medium, department="Department of Public Works", confidence=0.9, tags=["pothole"]),
+        classification=Classification(category=ComplaintCategory.pothole, department="Department of Public Works", priority="medium", summary="Sector 5 main road pothole", confidence=0.9, tags=["pothole"]),
     )
     c2 = Complaint(
-        text="There is a big pothole on Sector 5 main road causing traffic blocks.",
+        text="pothole main road sector 5 blocking traffic again",
         place="Sector 5",
-        classification=ComplaintClassification(category=Category.roads, priority=Priority.medium, department="Department of Public Works", confidence=0.9, tags=["pothole"]),
+        classification=Classification(category=ComplaintCategory.pothole, department="Department of Public Works", priority="medium", summary="Sector 5 main road pothole", confidence=0.9, tags=["pothole"]),
     )
     c1.id = "cmp_1"
     c2.id = "cmp_2"
@@ -34,14 +34,14 @@ def test_find_duplicates_no_gps():
 
 def test_find_duplicates_different_categories():
     c1 = Complaint(
-        text="Water pipe broken and leaking on the street.",
+        text="Water pipe broken leaking street",
         place="Sector 5",
-        classification=ComplaintClassification(category=Category.water_waste, priority=Priority.medium, department="Department of Urban Development and Municipal Affairs", confidence=0.9, tags=["water"]),
+        classification=Classification(category=ComplaintCategory.water_leak, department="Department of Urban Development and Municipal Affairs", priority="medium", summary="broken water pipe", confidence=0.9, tags=["water"]),
     )
     c2 = Complaint(
-        text="Water pipe broken and leaking on the street.",
+        text="Water pipe broken leaking street",
         place="Sector 5",
-        classification=ComplaintClassification(category=Category.roads, priority=Priority.medium, department="Department of Public Works", confidence=0.9, tags=["pothole"]),
+        classification=Classification(category=ComplaintCategory.pothole, department="Department of Public Works", priority="medium", summary="broken water pipe", confidence=0.9, tags=["pothole"]),
     )
     c1.id = "cmp_1"
     c2.id = "cmp_2"
@@ -54,7 +54,7 @@ def test_find_duplicates_with_scores():
         text="Street light is completely broken and not working since a week.",
         place="Sector 5",
         state="West Bengal",
-        classification=ComplaintClassification(category=Category.electrical, priority=Priority.medium, department="Department of Power", confidence=0.9, tags=["electricity"]),
+        classification=Classification(category=ComplaintCategory.streetlight, department="Department of Power", priority="medium", summary="broken street light", confidence=0.9, tags=["electricity"]),
     )
     c1.id = "cmp_1"
     
@@ -62,7 +62,7 @@ def test_find_duplicates_with_scores():
         new_text="The street light is not working and broken",
         place="Sector 5",
         state="West Bengal",
-        category="electrical",
+        category="streetlight",
         existing=[c1]
     )
     assert len(results) > 0

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from fastapi import APIRouter, Depends
 from app.models import Hotspot, User, ComplaintStatus
 from app.services.storage import ComplaintStore

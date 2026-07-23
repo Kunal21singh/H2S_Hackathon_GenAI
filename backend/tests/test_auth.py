@@ -63,11 +63,12 @@ def test_admin_only_endpoints(client):
     # Register citizen
     reg_citizen = client.post("/auth/register", json={
         "username": "citizen123",
-        "password": "pass",
+        "password": "securepassword123",
         "full_name": "Citizen",
-        "phone": "123",
+        "phone": "+919876543212",
         "user_type": "Citizen"
     })
+    assert reg_citizen.status_code == 200
     citizen_token = reg_citizen.json()["token"]
     
     # Try fetching users as citizen (should fail 403)
@@ -77,11 +78,12 @@ def test_admin_only_endpoints(client):
     # Register admin
     reg_admin = client.post("/auth/register", json={
         "username": "admin123",
-        "password": "pass",
+        "password": "securepassword123",
         "full_name": "Admin User",
-        "phone": "999",
+        "phone": "+919876543213",
         "user_type": "Admin"
     })
+    assert reg_admin.status_code == 200
     admin_token = reg_admin.json()["token"]
     
     # Fetch users as admin (should succeed)

@@ -3,33 +3,36 @@ from io import BytesIO
 def test_complaint_lifecycle(client):
     # 1. Register citizen and admin
     citizen_reg = client.post("/auth/register", json={
-        "username": "c1",
-        "password": "p1",
+        "username": "citizen_one",
+        "password": "securepassword123",
         "full_name": "Citizen One",
         "phone": "+919876543220",
         "user_type": "Citizen",
         "state": "West Bengal"
     })
+    assert citizen_reg.status_code == 200
     citizen_token = citizen_reg.json()["token"]
     
     admin_reg = client.post("/auth/register", json={
-        "username": "a1",
-        "password": "p1",
+        "username": "admin_one",
+        "password": "securepassword123",
         "full_name": "Admin One",
         "phone": "+919876543221",
         "user_type": "Admin",
         "state": "West Bengal"
     })
+    assert admin_reg.status_code == 200
     admin_token = admin_reg.json()["token"]
     
     officer_reg = client.post("/auth/register", json={
-        "username": "o1",
-        "password": "p1",
+        "username": "officer_one",
+        "password": "securepassword123",
         "full_name": "Officer One",
         "phone": "+919876543222",
         "user_type": "Department of Public Works Officer",
         "state": "West Bengal"
     })
+    assert officer_reg.status_code == 200
     officer_token = officer_reg.json()["token"]
 
     # 2. Create complaint (Citizen)
@@ -77,7 +80,7 @@ def test_complaint_lifecycle(client):
     assert len(comment_res.json()["timeline"]) > 2  # Created, Upvoted, Commented
 
     # 6. Complete complaint with resolution photo (Officer)
-    photo_file = (BytesIO(b"dummy image bytes"), "resolved.jpg")
+    photo_file = ("resolved.jpg", BytesIO(b"dummy image bytes"), "image/jpeg")
     complete_res = client.post(
         f"/complaints/{comp_id}/complete",
         files={"resolution_photo": photo_file},
@@ -85,7 +88,7 @@ def test_complaint_lifecycle(client):
     )
     assert complete_res.status_code == 200
     assert complete_res.json()["status"] == "resolved"
-    assert complete_res.json()["photo_filename_resolved"] is not None
+    assert complete_res.json()["resolution_photo_filename"] is not None
 
     # 7. Delete complaint (Admin)
     delete_res = client.delete(
