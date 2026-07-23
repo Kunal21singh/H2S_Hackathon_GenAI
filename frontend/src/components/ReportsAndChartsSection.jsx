@@ -3,7 +3,19 @@ import { BarChart3, Download, AlertTriangle, FileText } from 'lucide-react';
 import { downloadCSV } from '../utils/csv';
 import { AnalyticsDashboard } from './AnalyticsDashboard';
 
+const CATEGORY_DEPT_MAP = {
+  pothole: "Department of Public Works",
+  garbage: "Department of Urban Development & Municipal Affairs",
+  water_leak: "Department of Urban Development & Municipal Affairs",
+  streetlight: "Department of Power",
+  drainage: "Department of Urban Development & Municipal Affairs",
+  traffic_signal: "Department of Transport",
+  other: "Department of Urban Development & Municipal Affairs"
+};
+
 export function ReportsAndChartsSection({ user, complaints }) {
+  const [hoveredBar, setHoveredBar] = React.useState(null); // { type: 'priority' | 'category', key: string }
+
   const exportGrievancesCSV = () => {
     const headers = ['ID', 'Date', 'Summary', 'Category', 'Department', 'Priority', 'Status', 'Place', 'State', 'Upvotes', 'Reporter'];
     const rows = complaints.map(c => [
@@ -29,73 +41,62 @@ export function ReportsAndChartsSection({ user, complaints }) {
       if (!deptStats[dept]) deptStats[dept] = { total: 0, resolved: 0, active: 0, critical: 0 };
       deptStats[dept].total += 1;
       if (c.status === 'resolved') deptStats[dept].resolved += 1;
-      else deptStats[dept].active += 1;
-      if (c.classification?.priority === 'critical' || c.classification?.priority === 'high') deptStats[dept].critical += 1;
+      else {
+        deptStats[dept].active += 1;
+        if (['high', 'critical'].includes(c.classification?.priority)) {
+          deptStats[dept].critical += 1;
+        }
+      }
     });
-
-    const headers = ['Department Name', 'Total Complaints', 'Active Cases', 'Resolved Cases', 'High/Critical Priority', 'Resolution Rate (%)'];
+    const headers = ['Department', 'Total Complaints', 'Resolved Cases', 'Active Cases', 'Critical Active Cases', 'SLA Resolution Rate'];
     const rows = Object.entries(deptStats).map(([dept, stats]) => [
       dept,
       stats.total,
-      stats.active,
       stats.resolved,
+      stats.active,
       stats.critical,
-      stats.total > 0 ? ((stats.resolved / stats.total) * 100).toFixed(1) : '0'
+      stats.total > 0 ? `${((stats.resolved / stats.total) * 100).toFixed(1)}%` : '0%'
     ]);
-    downloadCSV(`civicpulse_department_audit_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+    downloadCSV(`civicpulse_department_sla_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
   };
 
   const exportExecutiveBriefCSV = () => {
     const total = complaints.length;
     const resolved = complaints.filter(c => c.status === 'resolved').length;
     const active = total - resolved;
-    const critical = complaints.filter(c => c.classification?.priority === 'critical').length;
-    const high = complaints.filter(c => c.classification?.priority === 'high').length;
-
-    const headers = ['Metric Label', 'Value', 'Notes'];
+    const critical = complaints.filter(c => c.status !== 'resolved' && ['high', 'critical'].includes(c.classification?.priority)).length;
+    const headers = ['Metric', 'Count', 'Percentage'];
     const rows = [
-      ['Total Grievances Logged', total, 'National Database'],
-      ['Active Redressal Tickets', active, 'Currently In Progress or AI Routed'],
-      ['Resolved Cases', resolved, 'Verified with Resolution Photo Proof'],
-      ['Resolution Rate', total > 0 ? `${((resolved / total) * 100).toFixed(1)}%` : '0%', 'Overall system efficiency'],
-      ['Critical Priority Tickets', critical, 'Immediate SLA Attention Required'],
-      ['High Priority Tickets', high, 'Priority Queue Escalation']
+      ['Total Grievances Registered', total, '100%'],
+      ['Resolved Cases Archive', resolved, total > 0 ? `${((resolved / total) * 100).toFixed(1)}%` : '0%'],
+      ['Active Citizen Grievances', active, total > 0 ? `${((active / total) * 100).toFixed(1)}%` : '0%'],
+      ['Critical Urgency Grievances', critical, active > 0 ? `${((critical / active) * 100).toFixed(1)}%` : '0%']
     ];
     downloadCSV(`civicpulse_executive_brief_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
   };
 
-  // Priority Distribution Stats
+  const totalComplaints = complaints.length || 1;
   const priorityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
   const categoryCounts = {};
 
   complaints.forEach(c => {
-    const prio = (c.classification?.priority || 'medium').toLowerCase();
-    if (priorityCounts[prio] !== undefined) priorityCounts[prio] += 1;
+    const p = c.classification?.priority || 'medium';
+    if (priorityCounts[p] !== undefined) priorityCounts[p] += 1;
     
     const cat = c.classification?.category || 'other';
     categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
   });
 
-  const totalComplaints = complaints.length || 1;
-
   return (
-    <section style={{ maxWidth: '1100px', margin: '0 auto 30px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Section Header */}
-      <div className="panel" style={{ padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6' }}>
-            <BarChart3 size={30} />
-          </div>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--color-main)' }}>Reports & Visual Analytics</h2>
-            <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--color-muted)' }}>
-              Explore public grievance diagnostic intelligence, regional SLA charts, and download executive CSV briefs.
-            </p>
-          </div>
-        </div>
-
-        {/* CSV Export Quick Buttons */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+    <section className="section" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className="panel" style={{ padding: '20px' }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: '1.05rem', color: 'var(--color-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <BarChart3 size={18} color="var(--color-primary)" /> Administrative CSV Export Center
+        </h3>
+        <p className="muted" style={{ fontSize: '0.85rem', margin: '0 0 16px' }}>
+          Extract audit logs and departmental SLA diagnostics reports directly in spreadsheet formats for local verification and review.
+        </p>
+        <div style={{ display: 'flex', gap: '12px' }}>
           <button
             type="button"
             onClick={exportGrievancesCSV}
@@ -156,10 +157,8 @@ export function ReportsAndChartsSection({ user, complaints }) {
         </div>
       </div>
 
-      {/* Moved Public Grievance Diagnostic Center Component */}
       <AnalyticsDashboard user={user} complaints={complaints} />
 
-      {/* Priority & Category Visual Distribution Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
         {/* Priority Distribution Spectrum */}
         <div className="panel" style={{ padding: '20px' }}>
@@ -167,50 +166,74 @@ export function ReportsAndChartsSection({ user, complaints }) {
             <AlertTriangle size={18} color="#ef4444" /> Priority Level Distribution Spectrum
           </h3>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {/* Critical */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '4px' }}>
-                <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Critical Priority</span>
-                <span style={{ color: 'var(--color-main)', fontWeight: 'bold' }}>{priorityCounts.critical} cases ({((priorityCounts.critical / totalComplaints) * 100).toFixed(0)}%)</span>
-              </div>
-              <div style={{ height: '10px', background: 'var(--border-color)', borderRadius: '5px', overflow: 'hidden' }}>
-                <div style={{ width: `${(priorityCounts.critical / totalComplaints) * 100}%`, height: '100%', background: '#ef4444', borderRadius: '5px' }} />
-              </div>
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {[
+              { key: 'critical', label: 'Critical Priority', color: '#ef4444', sla: '48 Hours' },
+              { key: 'high', label: 'High Priority', color: '#f97316', sla: '72 Hours' },
+              { key: 'medium', label: 'Medium Priority', color: '#eab308', sla: '7 Days' },
+              { key: 'low', label: 'Low Priority', color: '#3b82f6', sla: '7 Days' }
+            ].map(p => {
+              const count = priorityCounts[p.key];
+              const pct = ((count / totalComplaints) * 100).toFixed(0);
+              const isHovered = hoveredBar?.type === 'priority' && hoveredBar?.key === p.key;
+              
+              return (
+                <div 
+                  key={p.key} 
+                  style={{ position: 'relative', cursor: 'pointer' }}
+                  onMouseEnter={() => setHoveredBar({ type: 'priority', key: p.key })}
+                  onMouseLeave={() => setHoveredBar(null)}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '4px' }}>
+                    <span style={{ color: p.color, fontWeight: 'bold' }}>{p.label}</span>
+                    <span style={{ color: 'var(--color-main)', fontWeight: 'bold' }}>{count} cases ({pct}%)</span>
+                  </div>
+                  <div style={{ 
+                    height: '10px', 
+                    background: 'var(--border-color)', 
+                    borderRadius: '5px', 
+                    overflow: 'visible',
+                    position: 'relative'
+                  }}>
+                    <div style={{ 
+                      width: `${pct}%`, 
+                      height: '100%', 
+                      background: p.color, 
+                      borderRadius: '5px',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      transform: isHovered ? 'scaleY(1.3)' : 'scaleY(1)',
+                      boxShadow: isHovered ? `0 0 12px ${p.color}` : 'none'
+                    }} />
+                  </div>
 
-            {/* High */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '4px' }}>
-                <span style={{ color: '#f97316', fontWeight: 'bold' }}>High Priority</span>
-                <span style={{ color: 'var(--color-main)', fontWeight: 'bold' }}>{priorityCounts.high} cases ({((priorityCounts.high / totalComplaints) * 100).toFixed(0)}%)</span>
-              </div>
-              <div style={{ height: '10px', background: 'var(--border-color)', borderRadius: '5px', overflow: 'hidden' }}>
-                <div style={{ width: `${(priorityCounts.high / totalComplaints) * 100}%`, height: '100%', background: '#f97316', borderRadius: '5px' }} />
-              </div>
-            </div>
-
-            {/* Medium */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '4px' }}>
-                <span style={{ color: '#eab308', fontWeight: 'bold' }}>Medium Priority</span>
-                <span style={{ color: 'var(--color-main)', fontWeight: 'bold' }}>{priorityCounts.medium} cases ({((priorityCounts.medium / totalComplaints) * 100).toFixed(0)}%)</span>
-              </div>
-              <div style={{ height: '10px', background: 'var(--border-color)', borderRadius: '5px', overflow: 'hidden' }}>
-                <div style={{ width: `${(priorityCounts.medium / totalComplaints) * 100}%`, height: '100%', background: '#eab308', borderRadius: '5px' }} />
-              </div>
-            </div>
-
-            {/* Low */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '4px' }}>
-                <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>Low Priority</span>
-                <span style={{ color: 'var(--color-main)', fontWeight: 'bold' }}>{priorityCounts.low} cases ({((priorityCounts.low / totalComplaints) * 100).toFixed(0)}%)</span>
-              </div>
-              <div style={{ height: '10px', background: 'var(--border-color)', borderRadius: '5px', overflow: 'hidden' }}>
-                <div style={{ width: `${(priorityCounts.low / totalComplaints) * 100}%`, height: '100%', background: '#3b82f6', borderRadius: '5px' }} />
-              </div>
-            </div>
+                  {isHovered && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '100%',
+                      left: '50%',
+                      transform: 'translate(-50%, -6px)',
+                      background: 'rgba(15, 23, 42, 0.96)',
+                      color: '#ffffff',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      fontSize: '0.78rem',
+                      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.6)',
+                      border: `1px solid ${p.color}`,
+                      zIndex: 100,
+                      pointerEvents: 'none',
+                      width: '180px',
+                      textAlign: 'center',
+                      backdropFilter: 'blur(4px)',
+                      transition: 'all 0.2s ease-in-out'
+                    }}>
+                      <strong style={{ color: p.color, display: 'block', marginBottom: '3px' }}>{p.label}</strong>
+                      ⏱️ SLA Limit: <strong>{p.sla}</strong><br/>
+                      📊 Active Volume: <strong>{count} cases</strong>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -220,21 +243,69 @@ export function ReportsAndChartsSection({ user, complaints }) {
             <FileText size={18} color="#10b981" /> Grievances by Issue Category
           </h3>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {Object.entries(categoryCounts).length === 0 ? (
               <p style={{ color: 'var(--color-muted)', fontSize: '0.85rem' }}>No category data available.</p>
             ) : (
               Object.entries(categoryCounts).map(([cat, count]) => {
                 const pct = ((count / totalComplaints) * 100).toFixed(0);
+                const isHovered = hoveredBar?.type === 'category' && hoveredBar?.key === cat;
+                const dept = CATEGORY_DEPT_MAP[cat] || "Department of Urban Development & Municipal Affairs";
+                
                 return (
-                  <div key={cat} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                  <div 
+                    key={cat} 
+                    style={{ position: 'relative', cursor: 'pointer' }}
+                    onMouseEnter={() => setHoveredBar({ type: 'category', key: cat })}
+                    onMouseLeave={() => setHoveredBar(null)}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '4px' }}>
                       <span style={{ textTransform: 'capitalize', fontWeight: '600', color: 'var(--color-main)' }}>{cat.replace('_', ' ')}</span>
                       <span style={{ color: 'var(--color-muted)', fontWeight: 'bold' }}>{count} ({pct}%)</span>
                     </div>
-                    <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)', borderRadius: '4px' }} />
+                    <div style={{ 
+                      height: '8px', 
+                      background: 'var(--border-color)', 
+                      borderRadius: '4px', 
+                      overflow: 'visible',
+                      position: 'relative'
+                    }}>
+                      <div style={{ 
+                        width: `${pct}%`, 
+                        height: '100%', 
+                        background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)', 
+                        borderRadius: '4px',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        transform: isHovered ? 'scaleY(1.3)' : 'scaleY(1)',
+                        boxShadow: isHovered ? '0 0 12px rgba(16, 185, 129, 0.6)' : 'none'
+                      }} />
                     </div>
+
+                    {isHovered && (
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: '50%',
+                        transform: 'translate(-50%, -6px)',
+                        background: 'rgba(15, 23, 42, 0.96)',
+                        color: '#ffffff',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        fontSize: '0.78rem',
+                        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.6)',
+                        border: '1px solid #10b981',
+                        zIndex: 100,
+                        pointerEvents: 'none',
+                        width: '220px',
+                        textAlign: 'center',
+                        backdropFilter: 'blur(4px)',
+                        transition: 'all 0.2s ease-in-out'
+                      }}>
+                        <strong style={{ color: '#10b981', display: 'block', textTransform: 'capitalize', marginBottom: '3px' }}>{cat.replace('_', ' ')}</strong>
+                        🏢 Dept: <strong>{dept.replace('Department of ', '')}</strong><br/>
+                        📊 Volume: <strong>{count} cases ({pct}%)</strong>
+                      </div>
+                    )}
                   </div>
                 );
               })

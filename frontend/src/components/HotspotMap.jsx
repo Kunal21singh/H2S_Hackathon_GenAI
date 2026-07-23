@@ -6,41 +6,22 @@ export function HotspotMap({ hotspots }) {
   const markersRef = React.useRef([]);
 
   React.useEffect(() => {
-    if (!document.getElementById('leaflet-css')) {
-      const link = document.createElement('link');
-      link.id = 'leaflet-css';
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
+    if (!mapRef.current) return;
+    if (mapInstanceRef.current) return;
+    if (!window.L) return;
 
-    if (!window.L) {
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.async = true;
-      script.onload = initMap;
-      document.body.appendChild(script);
-    } else {
-      initMap();
-    }
+    const validHotspot = hotspots.find(h => h.centroid_lat && h.centroid_lng);
+    const centerLat = validHotspot ? validHotspot.centroid_lat : 28.6139;
+    const centerLng = validHotspot ? validHotspot.centroid_lng : 77.2090;
 
-    function initMap() {
-      if (!mapRef.current) return;
-      if (mapInstanceRef.current) return;
+    const map = window.L.map(mapRef.current).setView([centerLat, centerLng], 12);
+    mapInstanceRef.current = map;
 
-      const validHotspot = hotspots.find(h => h.centroid_lat && h.centroid_lng);
-      const centerLat = validHotspot ? validHotspot.centroid_lat : 28.6139;
-      const centerLng = validHotspot ? validHotspot.centroid_lng : 77.2090;
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
 
-      const map = window.L.map(mapRef.current).setView([centerLat, centerLng], 12);
-      mapInstanceRef.current = map;
-
-      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap'
-      }).addTo(map);
-
-      updateMarkers();
-    }
+    updateMarkers();
 
     return () => {
       if (mapInstanceRef.current) {
