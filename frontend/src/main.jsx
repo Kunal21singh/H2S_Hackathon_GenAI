@@ -284,6 +284,15 @@ function App() {
         fetch(`${API_BASE}/hotspots`, { headers: authHeaders(session.token) }),
         fetch(`${API_BASE}/notifications`, { headers: authHeaders(session.token) }),
       ]);
+      if (complaintsRes.status === 401 || hotspotsRes.status === 401 || notificationsRes.status === 401) {
+        setSession(null);
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+        setNotice({
+          type: 'info',
+          text: 'Your session has expired. Please log in again.',
+        });
+        return;
+      }
       if (!complaintsRes.ok || !hotspotsRes.ok || !notificationsRes.ok) {
         throw new Error('API responded with an error.');
       }
