@@ -119,3 +119,47 @@ def test_complaint_lifecycle(client):
         headers={"Authorization": f"Bearer {officer_token}"}
     )
     assert len(list_after.json()) == 0
+
+
+def test_create_complaint_with_voice_file(client):
+    # Register citizen
+    citizen_reg = client.post("/auth/register", json={
+        "username": "voice_citizen",
+        "password": "securepassword123",
+        "full_name": "Voice Citizen",
+        "phone": "+919876543225",
+        "user_type": "Citizen",
+        "state": "West Bengal"
+    })
+    assert citizen_reg.status_code == 200
+    token = citizen_reg.json()["token"]
+
+    payload = {
+        "text": "Water leaking on the street.",
+        "place": "Salt Lake",
+        "state": "West Bengal"
+    }
+    voice_audio = ("voice.webm", BytesIO(b"dummy audio data"), "audio/webm")
+
+    create_res = client.post(
+        "/complaints",
+        data=payload,
+        files={"voice_file": voice_audio},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert create_res.status_code == 200
+    comp = create_res.json()
+    assert comp["voice_filename"] is not None
+    assert comp["voice_content_type"] == "audio/webm"
+
+
+def test_transcribe_audio_endpoint(client):
+    voice_audio = ("voice.webm", BytesIO(b"dummy audio data"), "audio/webm")
+    res = client.post(
+        "/ai/transcribe-audio",
+        files={"voice_file": voice_audio}
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert "transcript" in data
+    assert "translation" in data

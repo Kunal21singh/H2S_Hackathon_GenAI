@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from app.config import Settings, get_settings
 from app.models import User
 from app.services.storage import ComplaintStore
-from app.services.ai import DEPARTMENTS
+from app.services.ai import DEPARTMENTS, transcribe_audio_file
 from app.dependencies import get_store, get_current_user
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -19,33 +19,7 @@ async def analyze_image(
 ) -> dict[str, str]:
     photo_bytes = await photo.read()
 
-    # 1. Try Vertex AI Gemini (Uses GCP Credits)
-    if settings.google_cloud_project:
-        try:
-            import vertexai
-            from vertexai.generative_models import GenerativeModel, Part
-
-            vertexai.init(project=settings.google_cloud_project, location="us-central1")
-            model = GenerativeModel("gemini-2.5-flash")
-            
-            prompt = (
-                "Describe the civic grievance, municipal issue, infrastructure damage, or public disturbance shown in this image. "
-                "Act as a citizen reporting this issue to their local municipal corporation. "
-                "Write a concise, professional description of 1 to 3 sentences detailing the problem (e.g. 'A deep pothole has formed on the road lane, filled with rain water and causing vehicle hazards. It needs urgent paving.'). "
-                "Return only the plain description text without any markdown or conversational filler."
-            )
-            
-            payload = [
-                prompt,
-                Part.from_data(data=photo_bytes, mime_type=photo.content_type or "image/jpeg")
-            ]
-            
-            response = await model.generate_content_async(payload)
-            return {"description": response.text.strip()}
-        except Exception as e:
-            print(f"Vertex AI image analysis failed: {e}")
-
-    # 2. Try Google AI Studio Gemini API
+    # 1. Try Google AI Studio Gemini API (Fast, API Key)
     if settings.google_api_key:
         try:
             import google.generativeai as genai
@@ -71,7 +45,33 @@ async def analyze_image(
             response = await model.generate_content_async(payload)
             return {"description": response.text.strip()}
         except Exception as e:
-            return {"description": f"Failed to auto-describe image with AI Studio: {str(e)}"}
+            print(f"Failed to auto-describe image with AI Studio, checking Vertex AI: {str(e)}")
+
+    # 2. Try Vertex AI Gemini (Uses GCP Credits)
+    if settings.google_cloud_project:
+        try:
+            import vertexai
+            from vertexai.generative_models import GenerativeModel, Part
+
+            vertexai.init(project=settings.google_cloud_project, location="us-central1")
+            model = GenerativeModel("gemini-2.5-flash")
+            
+            prompt = (
+                "Describe the civic grievance, municipal issue, infrastructure damage, or public disturbance shown in this image. "
+                "Act as a citizen reporting this issue to their local municipal corporation. "
+                "Write a concise, professional description of 1 to 3 sentences detailing the problem (e.g. 'A deep pothole has formed on the road lane, filled with rain water and causing vehicle hazards. It needs urgent paving.'). "
+                "Return only the plain description text without any markdown or conversational filler."
+            )
+            
+            payload = [
+                prompt,
+                Part.from_data(data=photo_bytes, mime_type=photo.content_type or "image/jpeg")
+            ]
+            
+            response = await model.generate_content_async(payload)
+            return {"description": response.text.strip()}
+        except Exception as e:
+            print(f"Vertex AI image analysis failed: {e}")
 
     return {"description": "Upload successful. (Auto-description requires Vertex AI or Google AI key)"}
 
@@ -220,3 +220,13 @@ async def ai_assistant_chat(
         reply = f"🤖 Civic AI Assistant:\nI processed your query: '{user_msg}'. Currently monitoring {total_count} civic complaints ({active_count} active, {resolved_count} resolved). You can ask me about your complaint status, department performance, or how to file a grievance!"
 
     return {"response": reply, "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+@router.post("/transcribe-audio")
+async def transcribe_audio(
+    voice_file: UploadFile = File(...),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, str]:
+    voice_bytes = await voice_file.read()
+    content_type = voice_file.content_type or "audio/webm"
+    return await transcribe_audio_file(settings, voice_bytes, content_type)

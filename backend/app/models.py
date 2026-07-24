@@ -32,6 +32,7 @@ class Classification(BaseModel):
     tags: list[str] = []
     confidence: float = Field(ge=0, le=1)
     translated_text: str | None = None
+    voice_transcript: str | None = None
 
 
 class TimelineEvent(BaseModel):
@@ -47,6 +48,8 @@ class Complaint(BaseModel):
     original_text: str | None = None
     timeline: list[TimelineEvent] = Field(default_factory=list)
     voice_transcript: str | None = None
+    voice_filename: str | None = None
+    voice_content_type: str | None = None
     photo_filename: str | None = None
     photo_content_type: str | None = None
     place: str = "Unassigned"

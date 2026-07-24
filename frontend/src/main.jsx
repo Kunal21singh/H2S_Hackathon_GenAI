@@ -149,67 +149,97 @@ function App() {
   const [locationError, setLocationError] = useState('');
 
   const [isListening, setIsListening] = useState(false);
-  const [voiceLang, setVoiceLang] = useState('en-US');
-  const recognitionRef = React.useRef(null);
-  const initialTextRef = React.useRef('');
+  const [selectedVoiceFile, setSelectedVoiceFile] = useState(null);
+  const mediaRecorderRef = React.useRef(null);
+  const audioChunksRef = React.useRef([]);
 
   const startListening = () => {
-    const defaultText = 'Water pipe is leaking near the bus stop and flooding the lane.';
-    const currentText = form.text === defaultText ? '' : form.text;
-    initialTextRef.current = currentText;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("Audio recording is not supported in this browser. Please use Chrome, Firefox, or Safari.");
+      return;
+    }
 
+    const defaultText = 'Water pipe is leaking near the bus stop and flooding the lane.';
     setForm((prev) => {
       const updated = { ...prev };
       if (prev.text === defaultText) {
         updated.text = '';
       }
-      updated.voice_transcript = '';
+      updated.voice_transcript = '🎤 Voice recording in progress... Click microphone to stop.';
       return updated;
     });
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.");
-      return;
-    }
-    const rec = new SpeechRecognition();
-    rec.continuous = true;
-    rec.interimResults = false;
-    rec.lang = voiceLang;
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then((stream) => {
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+        audioChunksRef.current = [];
 
-    rec.onstart = () => {
-      setIsListening(true);
-    };
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
 
-    rec.onresult = (event) => {
-      let sessionTranscript = '';
-      for (let i = 0; i < event.results.length; i++) {
-        sessionTranscript += event.results[i][0].transcript;
-      }
-      const cleanTranscript = sessionTranscript.trim();
-      setForm((prev) => ({
-        ...prev,
-        voice_transcript: cleanTranscript,
-        text: (initialTextRef.current ? initialTextRef.current.trim() + ' ' : '') + cleanTranscript
-      }));
-    };
+        mediaRecorder.onstop = () => {
+          const mimeType = audioChunksRef.current[0]?.type || 'audio/webm';
+          const blob = new Blob(audioChunksRef.current, { type: mimeType });
+          const file = new File([blob], 'voice_recording.webm', { type: mimeType });
+          setSelectedVoiceFile(file);
+          
+          setForm((prev) => ({
+            ...prev,
+            voice_transcript: '🎤 Transcribing audio... please wait...'
+          }));
 
-    rec.onerror = (e) => {
-      console.error(e);
-      setIsListening(false);
-    };
+          const payload = new FormData();
+          payload.append('voice_file', file);
 
-    rec.onend = () => {
-      setIsListening(false);
-    };
+          fetch(`${API_BASE}/ai/transcribe-audio`, {
+            method: 'POST',
+            headers: authHeaders(session.token),
+            body: payload
+          })
+            .then((res) => {
+              if (!res.ok) throw new Error("Transcription request failed.");
+              return res.json();
+            })
+            .then((data) => {
+              setForm((prev) => ({
+                ...prev,
+                voice_transcript: data.transcript || '🎤 Audio recorded successfully (Ready to upload)',
+                text: data.translation || prev.text
+              }));
+            })
+            .catch((err) => {
+              console.error("Real-time transcription failed:", err);
+              setForm((prev) => ({
+                ...prev,
+                voice_transcript: '🎤 Audio recorded successfully (Ready to upload)'
+              }));
+            });
 
-    recognitionRef.current = rec;
-    rec.start();
+          stream.getTracks().forEach((track) => track.stop());
+        };
+
+        mediaRecorder.start(250);
+        setIsListening(true);
+      })
+      .catch((err) => {
+        console.error("Microphone access denied or error:", err);
+        alert("Could not access microphone. Please check your browser permissions.");
+        setForm((prev) => ({
+          ...prev,
+          voice_transcript: ''
+        }));
+        setIsListening(false);
+      });
   };
 
   const stopListening = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      setIsListening(false);
     }
   };
 
@@ -506,6 +536,10 @@ function App() {
       const file = fileInput?.files?.[0];
       if (file) payload.append('photo', file);
 
+      if (selectedVoiceFile) {
+        payload.append('voice_file', selectedVoiceFile);
+      }
+
       const res = await fetch(`${API_BASE}/complaints`, {
         method: 'POST',
         headers: authHeaders(session.token),
@@ -517,6 +551,7 @@ function App() {
       }
       await refresh();
       setSelectedFile(null);
+      setSelectedVoiceFile(null);
       setForm({
         text: '',
         place: '',
@@ -1013,33 +1048,12 @@ function App() {
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative' }}>
                   <span>Voice transcript</span>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
-                    <select
-                      value={voiceLang}
-                      onChange={(e) => setVoiceLang(e.target.value)}
-                      style={{
-                        width: '145px',
-                        height: '38px',
-                        padding: '0 8px',
-                        borderRadius: 'var(--radius-input)',
-                        border: '1px solid var(--border-color)',
-                        background: 'var(--bg-input)',
-                        color: 'var(--color-main)',
-                        fontSize: '0.9rem',
-                        cursor: 'pointer',
-                        boxSizing: 'border-box'
-                      }}
-                    >
-                      <option value="en-US" style={{ background: 'var(--bg-panel-solid)' }}>English</option>
-                      <option value="hi-IN" style={{ background: 'var(--bg-panel-solid)' }}>Hindi (हिन्दी)</option>
-                      <option value="bn-IN" style={{ background: 'var(--bg-panel-solid)' }}>Bengali (বাংলা)</option>
-                      <option value="te-IN" style={{ background: 'var(--bg-panel-solid)' }}>Telugu (తెలుగు)</option>
-                      <option value="ta-IN" style={{ background: 'var(--bg-panel-solid)' }}>Tamil (தமிழ்)</option>
-                    </select>
                     <input
                       value={form.voice_transcript}
                       onChange={(event) => setForm({ ...form, voice_transcript: event.target.value })}
-                      placeholder={isListening ? "Listening... Speak now..." : "Optional speech-to-text transcript"}
+                      placeholder={isListening ? "Recording audio... Click mic to stop..." : "Optional speech-to-text transcript"}
                       style={{ flex: 1 }}
+                      readOnly={isListening || !!selectedVoiceFile}
                     />
                     <button
                       type="button"

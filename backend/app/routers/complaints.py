@@ -112,6 +112,7 @@ async def create_complaint(
     contact: str | None = Form(None),
     voice_transcript: str | None = Form(None),
     photo: UploadFile | None = File(None),
+    voice_file: UploadFile | None = File(None),
     settings: Settings = Depends(get_settings),
     store: ComplaintStore = Depends(get_store),
     current_user: User = Depends(get_current_user),
@@ -128,6 +129,18 @@ async def create_complaint(
         (uploads_dir / photo_filename).write_bytes(photo_bytes)
         photo_content_type = photo.content_type
 
+    voice_filename = None
+    voice_content_type = None
+    voice_bytes = None
+    if voice_file and voice_file.filename:
+        voice_bytes = await voice_file.read()
+        ext = Path(voice_file.filename).suffix or ".webm"
+        voice_filename = f"voice_{uuid4().hex[:10]}{ext}"
+        uploads_dir = Path("data/uploads")
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        (uploads_dir / voice_filename).write_bytes(voice_bytes)
+        voice_content_type = voice_file.content_type
+
     classification = await classify_complaint(
         settings=settings,
         text=text,
@@ -135,11 +148,15 @@ async def create_complaint(
         photo_bytes=photo_bytes,
         photo_content_type=photo_content_type,
         photo_filename=photo_filename,
+        voice_bytes=voice_bytes,
+        voice_content_type=voice_content_type,
     )
     complaint = Complaint(
         text=classification.translated_text or text,
         original_text=text,
-        voice_transcript=voice_transcript,
+        voice_transcript=classification.voice_transcript or voice_transcript,
+        voice_filename=voice_filename,
+        voice_content_type=voice_content_type,
         photo_filename=photo_filename,
         photo_content_type=photo_content_type,
         place=place,

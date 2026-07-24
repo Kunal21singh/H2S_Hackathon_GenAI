@@ -53,7 +53,25 @@ Provide a clear, detailed, and polite response in natural language. Use markdown
 User Question: {question}
 """
 
-    # 1. Try Vertex AI Gemini (Uses GCP Credits)
+    # 1. Try Google AI Studio Gemini API (Fast, API Key)
+    if settings.google_api_key:
+        try:
+            import google.generativeai as genai
+
+            genai.configure(api_key=settings.google_api_key)
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            response = await model.generate_content_async(prompt)
+            return AnalyticsAnswer(
+                question=question,
+                answer=response.text.strip(),
+                sql=None,
+                rows=[],
+                source="vertex-ai-gemini-agent",
+            )
+        except Exception as e:
+            print(f"AI Studio agent analysis failed, checking Vertex AI: {e}")
+
+    # 2. Try Vertex AI Gemini (Uses GCP Credits)
     if settings.google_cloud_project:
         try:
             import vertexai
@@ -71,24 +89,6 @@ User Question: {question}
             )
         except Exception as e:
             print(f"Vertex AI agent analysis failed: {e}")
-
-    # 2. Try Google AI Studio Gemini API
-    if settings.google_api_key:
-        try:
-            import google.generativeai as genai
-
-            genai.configure(api_key=settings.google_api_key)
-            model = genai.GenerativeModel("gemini-2.5-flash")
-            response = await model.generate_content_async(prompt)
-            return AnalyticsAnswer(
-                question=question,
-                answer=response.text.strip(),
-                sql=None,
-                rows=[],
-                source="vertex-ai-gemini-agent",
-            )
-        except Exception as e:
-            print(f"AI Studio agent analysis failed: {e}")
 
     return None
 
@@ -173,8 +173,20 @@ Return only SQL. Question: {question}
 """
         sql = None
 
-        # 1. Try Vertex AI Gemini (Paid GCP Billing - Consumes Credits)
-        if settings.google_cloud_project:
+        # 1. Try Google AI Studio Gemini API (Developer Key)
+        if settings.google_api_key:
+            try:
+                import google.generativeai as genai
+
+                genai.configure(api_key=settings.google_api_key)
+                model = genai.GenerativeModel("gemini-2.5-flash")
+                response = await model.generate_content_async(prompt)
+                sql = response.text.strip().strip("`").removeprefix("sql").strip()
+            except Exception as e:
+                print(f"AI Studio BigQuery SQL generator failed, checking Vertex AI: {e}")
+
+        # 2. Try Vertex AI Gemini (Paid GCP Billing - Consumes Credits)
+        if not sql and settings.google_cloud_project:
             try:
                 import vertexai
                 from vertexai.generative_models import GenerativeModel
@@ -185,18 +197,6 @@ Return only SQL. Question: {question}
                 sql = response.text.strip().strip("`").removeprefix("sql").strip()
             except Exception as e:
                 print(f"Vertex AI BigQuery SQL generator failed: {e}")
-
-        # 2. Try Google AI Studio Gemini API (Developer Key)
-        if not sql and settings.google_api_key:
-            try:
-                import google.generativeai as genai
-
-                genai.configure(api_key=settings.google_api_key)
-                model = genai.GenerativeModel("gemini-2.5-flash")
-                response = await model.generate_content_async(prompt)
-                sql = response.text.strip().strip("`").removeprefix("sql").strip()
-            except Exception as e:
-                print(f"AI Studio BigQuery SQL generator failed: {e}")
 
         if not sql:
             return None

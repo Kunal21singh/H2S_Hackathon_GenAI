@@ -58,6 +58,7 @@ def _local_classify(text: str, voice_transcript: str | None, photo_filename: str
                 tags=[keyword for keyword in keywords if keyword in haystack][:4],
                 confidence=0.76,
                 translated_text=text,
+                voice_transcript=voice_transcript,
             )
     return Classification(
         category=ComplaintCategory.other,
@@ -67,6 +68,7 @@ def _local_classify(text: str, voice_transcript: str | None, photo_filename: str
         tags=[],
         confidence=0.45,
         translated_text=text,
+        voice_transcript=voice_transcript,
     )
 
 
@@ -103,56 +105,22 @@ async def classify_complaint(
     photo_bytes: bytes | None,
     photo_content_type: str | None,
     photo_filename: str | None,
+    voice_bytes: bytes | None = None,
+    voice_content_type: str | None = None,
 ) -> Classification:
     dept_options = ", ".join(DEPARTMENTS)
     prompt = (
         "Classify this civic grievance. If the grievance is written or spoken in a regional language (like Hindi, Bengali, Tamil, etc.), "
-        "automatically translate it to English. Return only JSON with keys category, department, priority, summary, tags, confidence, translated_text. "
+        "automatically translate it to English. Return only JSON with keys category, department, priority, summary, tags, confidence, translated_text, voice_transcript. "
         "translated_text should be the translated English text, or the original English text if no translation was needed. "
+        "voice_transcript should be the transcription of the provided audio file (in its original spoken language like Bengali/Hindi/English), "
+        "or the provided voice_transcript text if no audio file was uploaded, or null if neither was provided. "
         "Allowed categories: pothole, garbage, water_leak, streetlight, drainage, traffic_signal, other. "
         "Allowed priorities: low, medium, high, critical. "
         f"Allowed departments (you MUST choose exactly one from this list): {dept_options}"
     )
 
-    # 1. Try Vertex AI Gemini (Uses GCP Credits)
-    if settings.google_cloud_project:
-        try:
-            import vertexai
-            from vertexai.generative_models import GenerativeModel, Part
-
-            vertexai.init(project=settings.google_cloud_project, location="us-central1")
-            model = GenerativeModel("gemini-2.5-flash")
-            
-            payload = [
-                prompt,
-                f"Text: {text}",
-            ]
-            if voice_transcript:
-                payload.append(f"Voice transcript: {voice_transcript}")
-            if photo_bytes and photo_content_type:
-                payload.append(
-                    Part.from_data(data=photo_bytes, mime_type=photo_content_type)
-                )
-
-            response = await model.generate_content_async(payload)
-            data = _extract_json(response.text)
-            
-            # Post-validate department name to ensure it matches the standardized list
-            matched_dept = find_matching_department(data.get("department", ""))
-
-            return Classification(
-                category=ComplaintCategory(data.get("category", "other")),
-                department=matched_dept,
-                priority=data.get("priority", "medium"),
-                summary=data.get("summary") or _summary(text, voice_transcript),
-                tags=data.get("tags") or [],
-                confidence=float(data.get("confidence", 0.7)),
-                translated_text=data.get("translated_text") or text,
-            )
-        except Exception as e:
-            print(f"Vertex AI classification failed, checking AI Studio: {e}")
-
-    # 2. Try Google AI Studio Gemini API
+    # 1. Try Google AI Studio Gemini API (Fast, API Key)
     if settings.google_api_key:
         try:
             import google.generativeai as genai
@@ -165,6 +133,13 @@ async def classify_complaint(
             ]
             if voice_transcript:
                 payload.append(f"Voice transcript: {voice_transcript}")
+            if voice_bytes and voice_content_type:
+                payload.append(
+                    {
+                        "mime_type": voice_content_type,
+                        "data": voice_bytes,
+                    }
+                )
             if photo_bytes and photo_content_type:
                 payload.append(
                     {
@@ -183,20 +158,136 @@ async def classify_complaint(
                 category=ComplaintCategory(data.get("category", "other")),
                 department=matched_dept,
                 priority=data.get("priority", "medium"),
-                summary=data.get("summary") or _summary(text, voice_transcript),
+                summary=data.get("summary") or _summary(text, data.get("voice_transcript") or voice_transcript),
                 tags=data.get("tags") or [],
                 confidence=float(data.get("confidence", 0.7)),
                 translated_text=data.get("translated_text") or text,
+                voice_transcript=data.get("voice_transcript") or voice_transcript,
             )
         except Exception as e:
-            print(f"AI Studio classification failed: {e}")
+            print(f"AI Studio classification failed, checking Vertex AI: {e}")
+
+    # 2. Try Vertex AI Gemini (Uses GCP Credits, requires local credentials)
+    if settings.google_cloud_project:
+        try:
+            import vertexai
+            from vertexai.generative_models import GenerativeModel, Part
+
+            vertexai.init(project=settings.google_cloud_project, location="us-central1")
+            model = GenerativeModel("gemini-2.5-flash")
+            
+            payload = [
+                prompt,
+                f"Text: {text}",
+            ]
+            if voice_transcript:
+                payload.append(f"Voice transcript: {voice_transcript}")
+            if voice_bytes and voice_content_type:
+                payload.append(
+                    Part.from_data(data=voice_bytes, mime_type=voice_content_type)
+                )
+            if photo_bytes and photo_content_type:
+                payload.append(
+                    Part.from_data(data=photo_bytes, mime_type=photo_content_type)
+                )
+
+            response = await model.generate_content_async(payload)
+            data = _extract_json(response.text)
+            
+            # Post-validate department name to ensure it matches the standardized list
+            matched_dept = find_matching_department(data.get("department", ""))
+
+            return Classification(
+                category=ComplaintCategory(data.get("category", "other")),
+                department=matched_dept,
+                priority=data.get("priority", "medium"),
+                summary=data.get("summary") or _summary(text, data.get("voice_transcript") or voice_transcript),
+                tags=data.get("tags") or [],
+                confidence=float(data.get("confidence", 0.7)),
+                translated_text=data.get("translated_text") or text,
+                voice_transcript=data.get("voice_transcript") or voice_transcript,
+            )
+        except Exception as e:
+            print(f"Vertex AI classification failed: {e}")
 
     return _local_classify(text, voice_transcript, photo_filename)
 
 
 def _extract_json(raw: str) -> dict[str, Any]:
     cleaned = raw.strip()
+    # Locate first '{' and last '}' to strip conversational filler
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end != -1:
+        try:
+            return json.loads(cleaned[start:end+1])
+        except Exception:
+            pass
+
     if cleaned.startswith("```"):
         cleaned = cleaned.strip("`")
         cleaned = cleaned.removeprefix("json").strip()
     return json.loads(cleaned)
+
+
+async def transcribe_audio_file(
+    settings: Settings,
+    voice_bytes: bytes,
+    voice_content_type: str,
+) -> dict[str, str]:
+    prompt = (
+        "Listen to this audio. Automatically detect the spoken language. "
+        "Transcribe it accurately in its original language, and also translate it to English. "
+        "Return only a JSON object with keys: transcript (the transcription in the original language) "
+        "and translation (the English translation)."
+    )
+
+    # 1. Try Google AI Studio (Fast, API Key)
+    if settings.google_api_key:
+        try:
+            import google.generativeai as genai
+
+            genai.configure(api_key=settings.google_api_key)
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            payload = [
+                prompt,
+                {
+                    "mime_type": voice_content_type,
+                    "data": voice_bytes,
+                }
+            ]
+            response = await model.generate_content_async(payload)
+            data = _extract_json(response.text)
+            return {
+                "transcript": data.get("transcript", "").strip(),
+                "translation": data.get("translation", "").strip(),
+            }
+        except Exception as e:
+            print(f"AI Studio audio transcription failed, checking Vertex AI: {e}")
+
+    # 2. Try Vertex AI (Uses GCP Credits, requires local credentials)
+    if settings.google_cloud_project:
+        try:
+            import vertexai
+            from vertexai.generative_models import GenerativeModel, Part
+
+            vertexai.init(project=settings.google_cloud_project, location="us-central1")
+            model = GenerativeModel("gemini-2.5-flash")
+            
+            payload = [
+                prompt,
+                Part.from_data(data=voice_bytes, mime_type=voice_content_type)
+            ]
+            response = await model.generate_content_async(payload)
+            data = _extract_json(response.text)
+            return {
+                "transcript": data.get("transcript", "").strip(),
+                "translation": data.get("translation", "").strip(),
+            }
+        except Exception as e:
+            print(f"Vertex AI audio transcription failed: {e}")
+
+    return {
+        "transcript": "Audio recorded successfully. (Speech-to-text auto-detection requires active API credentials)",
+        "translation": "Audio recorded successfully. (Speech-to-text auto-detection requires active API credentials)"
+    }
