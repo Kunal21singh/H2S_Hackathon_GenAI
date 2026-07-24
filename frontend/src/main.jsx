@@ -149,9 +149,24 @@ function App() {
   const [locationError, setLocationError] = useState('');
 
   const [isListening, setIsListening] = useState(false);
+  const [voiceLang, setVoiceLang] = useState('en-US');
   const recognitionRef = React.useRef(null);
+  const initialTextRef = React.useRef('');
 
   const startListening = () => {
+    const defaultText = 'Water pipe is leaking near the bus stop and flooding the lane.';
+    const currentText = form.text === defaultText ? '' : form.text;
+    initialTextRef.current = currentText;
+
+    setForm((prev) => {
+      const updated = { ...prev };
+      if (prev.text === defaultText) {
+        updated.text = '';
+      }
+      updated.voice_transcript = '';
+      return updated;
+    });
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       alert("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.");
@@ -160,17 +175,22 @@ function App() {
     const rec = new SpeechRecognition();
     rec.continuous = true;
     rec.interimResults = false;
-    rec.lang = 'en-US';
+    rec.lang = voiceLang;
 
     rec.onstart = () => {
       setIsListening(true);
     };
 
     rec.onresult = (event) => {
-      const transcript = event.results[event.results.length - 1][0].transcript;
+      let sessionTranscript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        sessionTranscript += event.results[i][0].transcript;
+      }
+      const cleanTranscript = sessionTranscript.trim();
       setForm((prev) => ({
         ...prev,
-        voice_transcript: (prev.voice_transcript ? prev.voice_transcript + ' ' : '') + transcript.trim()
+        voice_transcript: cleanTranscript,
+        text: (initialTextRef.current ? initialTextRef.current.trim() + ' ' : '') + cleanTranscript
       }));
     };
 
@@ -993,6 +1013,28 @@ function App() {
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative' }}>
                   <span>Voice transcript</span>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+                    <select
+                      value={voiceLang}
+                      onChange={(e) => setVoiceLang(e.target.value)}
+                      style={{
+                        width: '145px',
+                        height: '38px',
+                        padding: '0 8px',
+                        borderRadius: 'var(--radius-input)',
+                        border: '1px solid var(--border-color)',
+                        background: 'var(--bg-input)',
+                        color: 'var(--color-main)',
+                        fontSize: '0.9rem',
+                        cursor: 'pointer',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <option value="en-US" style={{ background: 'var(--bg-panel-solid)' }}>English</option>
+                      <option value="hi-IN" style={{ background: 'var(--bg-panel-solid)' }}>Hindi (हिन्दी)</option>
+                      <option value="bn-IN" style={{ background: 'var(--bg-panel-solid)' }}>Bengali (বাংলা)</option>
+                      <option value="te-IN" style={{ background: 'var(--bg-panel-solid)' }}>Telugu (తెలుగు)</option>
+                      <option value="ta-IN" style={{ background: 'var(--bg-panel-solid)' }}>Tamil (தமிழ்)</option>
+                    </select>
                     <input
                       value={form.voice_transcript}
                       onChange={(event) => setForm({ ...form, voice_transcript: event.target.value })}

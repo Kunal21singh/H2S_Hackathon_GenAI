@@ -370,7 +370,7 @@ export function AdminPanel({ token, user, complaints, refresh }) {
       )}
 
       {/* Main Panel Content */}
-      <div className="panel" style={{ padding: '24px', background: 'rgba(30, 41, 59, 0.45)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.05)', fontFamily: 'Outfit, sans-serif' }}>
+      <div className="panel" style={{ padding: '24px', background: 'rgba(30, 41, 59, 0.45)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.05)', fontFamily: 'Outfit, sans-serif', maxWidth: '1425px', margin: '0 auto' }}>
         
         {/* Panel Header */}
         <div style={{ 
@@ -405,7 +405,8 @@ export function AdminPanel({ token, user, complaints, refresh }) {
             background: 'rgba(15, 23, 42, 0.5)',
             border: '1px solid rgba(255, 255, 255, 0.08)',
             padding: '3px',
-            borderRadius: '10px'
+            borderRadius: '10px',
+            maxWidth: '100%'
           }}>
             <button 
               className={activeTab === 'complaints' ? 'active' : ''} 
@@ -486,7 +487,7 @@ export function AdminPanel({ token, user, complaints, refresh }) {
                       boxShadow: isSelected ? '0 0 15px rgba(99, 102, 241, 0.1)' : 'none'
                     }}
                   >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden', minWidth: 0, flex: 1 }}>
                       <strong style={{ color: '#fff', fontSize: '0.92rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                         {c.classification.summary}
                       </strong>
@@ -590,7 +591,7 @@ export function AdminPanel({ token, user, complaints, refresh }) {
                   transition: 'all 0.2s ease',
                   gap: '16px'
                 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0, flex: 1 }}>
                     <strong style={{ color: '#fff', fontSize: '0.92rem' }}>
                       {u.full_name} <span style={{ color: 'var(--color-muted)', fontWeight: 'normal', fontSize: '0.85rem' }}>@{u.username}</span>
                     </strong>
