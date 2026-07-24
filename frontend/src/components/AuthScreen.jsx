@@ -41,15 +41,69 @@ export function AuthScreen({ mode, setMode, form, setForm, loading, notice, onSu
 
   return (
     <main className="authShell">
-      <section className="authPanel">
-        <div>
-          <p className="eyebrow">CivicPulse account</p>
-          <h1>CivicPulse</h1>
-        </div>
-        <div className="modeSwitch" role="tablist" aria-label="Authentication mode">
-          <button className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')} type="button">
-            <ShieldCheck size={17} />
-            Login
+      <div className="authContainer">
+        
+        {/* Left Side: Short Description & Working Info */}
+        <section className="authInfoSection">
+          <div className="brandBadge">
+            <span className="pulse-dot"></span>
+            <span>CivicPulse Platform</span>
+          </div>
+          
+          <h1 className="authInfoTitle">
+            AI Grievance Redressal<br />
+            <span>&amp; Civic Insight Engine</span>
+          </h1>
+          
+          <p className="authInfoDesc">
+            Empowering citizens and municipal corporations with automated issue routing, duplicate detection, and conversational civic analytics.
+          </p>
+          
+          <div className="workflowSteps">
+            <div className="workflowStep">
+              <div className="stepIcon">🎙️</div>
+              <div className="stepContent">
+                <h3>Multimodal Intake</h3>
+                <p>Report grievances using text, voice dictation in local languages, or photos.</p>
+              </div>
+            </div>
+            
+            <div className="workflowStep">
+              <div className="stepIcon">🤖</div>
+              <div className="stepContent">
+                <h3>Gemini AI Triage</h3>
+                <p>AI automatically classifies complaints, assesses severity, and routes to responsible departments.</p>
+              </div>
+            </div>
+            
+            <div className="workflowStep">
+              <div className="stepIcon">📍</div>
+              <div className="stepContent">
+                <h3>Hotspot &amp; Duplicate Filter</h3>
+                <p>Geospatial analysis aggregates complaints to detect hotspots and eliminate duplicate reports.</p>
+              </div>
+            </div>
+            
+            <div className="workflowStep">
+              <div className="stepIcon">💬</div>
+              <div className="stepContent">
+                <h3>Natural Language Analytics</h3>
+                <p>Officials query database in plain English, powered by NL-to-BigQuery SQL generation.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Right Side: Login/Register Panel */}
+        <section className="authPanel">
+          <div style={{ marginBottom: '24px' }}>
+            <p className="eyebrow">CivicPulse account</p>
+            <h1 style={{ fontSize: '2.2rem', marginBottom: '0' }}>CivicPulse</h1>
+          </div>
+          <div className="modeSwitch" role="tablist" aria-label="Authentication mode">
+            <button className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')} type="button">
+              <ShieldCheck size={17} />
+              Login
           </button>
           <button className={mode === 'register' ? 'active' : ''} onClick={() => setMode('register')} type="button">
             <UserPlus size={17} />
@@ -303,6 +357,7 @@ export function AuthScreen({ mode, setMode, form, setForm, loading, notice, onSu
           </button>
         </form>
       </section>
+     </div>
     </main>
   );
 }
