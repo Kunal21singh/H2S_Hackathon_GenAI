@@ -1,13 +1,25 @@
 import urllib.request
 import urllib.parse
 import json
+import threading
 from app.config import Settings
 from app.models import Complaint
 
 def send_telegram_notification(user_chat_id: str | None, complaint: Complaint, event_type: str, settings: Settings):
     """
-    Sends a Telegram notification to the citizen who filed the grievance.
+    Sends a Telegram notification to the citizen who filed the grievance asynchronously in a background thread.
     event_type can be "created", "updated", or "resolved".
+    """
+    t = threading.Thread(
+        target=_send_telegram_notification_sync,
+        args=(user_chat_id, complaint, event_type, settings)
+    )
+    t.daemon = True
+    t.start()
+
+def _send_telegram_notification_sync(user_chat_id: str | None, complaint: Complaint, event_type: str, settings: Settings):
+    """
+    Synchronous implementation that runs in the background thread.
     """
     if not settings.telegram_bot_token or not user_chat_id:
         print(f"Telegram notification skipped (token: {bool(settings.telegram_bot_token)}, chat_id: {user_chat_id})")
@@ -35,9 +47,9 @@ def send_telegram_notification(user_chat_id: str | None, complaint: Complaint, e
     message += f"📌 *ID*: `{complaint.id}`\n"
     message += f"📝 *Issue*: {complaint.classification.summary}\n"
     message += f"📍 *Location*: {complaint.place}\n"
-    message += f"🏷️ *Category*: `{complaint.classification.category.value}`\n"
+    message += f"🏷️ *Category*: `{complaint.classification.category.value if hasattr(complaint.classification.category, 'value') else str(complaint.classification.category)}`\n"
     message += f"🏢 *Department*: {complaint.classification.department}\n"
-    message += f"⚡ *Status*: *{complaint.status.value.upper()}*\n\n"
+    message += f"⚡ *Status*: *{complaint.status.value.upper() if hasattr(complaint.status, 'value') else str(complaint.status).upper()}*\n\n"
     message += f"🔍 [Track Status Directly]({tracking_url})"
 
     # Telegram API endpoint

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from math import asin, cos, radians, sin, sqrt
 
 from app.models import Complaint
@@ -49,8 +50,8 @@ def _distance_meters(lat1: float | None, lng1: float | None, lat2: float | None,
 
 
 def _jaccard(left: str, right: str) -> float:
-    left_tokens = {token for token in left.lower().split() if len(token) > 3}
-    right_tokens = {token for token in right.lower().split() if len(token) > 3}
+    left_tokens = {token for token in left.lower().split() if len(token) > 2}
+    right_tokens = {token for token in right.lower().split() if len(token) > 2}
     if not left_tokens or not right_tokens:
         return 0
     return len(left_tokens & right_tokens) / len(left_tokens | right_tokens)

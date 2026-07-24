@@ -221,6 +221,8 @@ class ComplaintStore:
             )
         else:
             self._write_local(items)
+        return updated
+
     async def update(self, complaint: Complaint) -> Complaint | None:
         items = await self.list()
         updated: Complaint | None = None
